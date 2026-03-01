@@ -190,7 +190,7 @@ const Quiz = () => {
         ))}
         <div className="flex w-full gap-4">
           <button
-            onClick={() => navigate("/")}
+            onClick={() => navigate("/home")}
             className="col-span-3 bg-gradient-to-bl from-gray-600 to-gray-300 bg-[position:_0%_0%] hover:bg-[position:_100%_100%] bg-[size:_200%] transition-all duration-500 text-[#02203c] p-3 rounded-md"
           >
             Cancel

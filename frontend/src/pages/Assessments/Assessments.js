@@ -31,7 +31,7 @@ const Assessments = () => {
       <div className="flex-1 p-8 bg-gradient-to-br from-rose-50 via-white to-emerald-50 overflow-y-auto">
         <div className="max-w-5xl mx-auto">
           <button
-            onClick={() => (window.history.length > 1 ? navigate(-1) : navigate("/"))}
+            onClick={() => (window.history.length > 1 ? navigate(-1) : navigate("/home"))}
             className="flex items-center gap-2 text-slate-500 hover:text-slate-800 mb-6 transition-colors"
           >
             <FiArrowLeft size={18} />

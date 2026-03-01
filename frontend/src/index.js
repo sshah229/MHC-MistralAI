@@ -3,6 +3,7 @@ import ReactDOM from "react-dom";
 import "./index.css";
 import App from "./App";
 import { createBrowserRouter, RouterProvider, Navigate, Outlet } from "react-router-dom";
+import Landing from "./pages/Landing/Landing";
 import Reports from "./pages/Reports/Reports";
 import Diet from "./pages/Diet/Diet";
 import Notifs from "./pages/Notifs/Notifs";
@@ -24,30 +25,18 @@ import Assessments from "./pages/Assessments/Assessments";
 import Activities from "./pages/Activities/Activities";
 import Progress from "./pages/Progress/Progress";
 
-// Auth check component - returns outlet or redirect based on auth state
 const RequireAuth = () => {
   const token = localStorage.getItem("token");
-  
-  if (!token) {
-    // Redirect to login if there's no token
-    return <Navigate to="/login" replace />;
-  }
-  
-  // Return outlet which will render the child route element
+  if (!token) return <Navigate to="/login" replace />;
   return <Outlet />;
 };
 
-// Check if user is logged in and set the initial path
-const token = localStorage.getItem('token');
-const initialPath = token ? '/' : '/login';
-
-// Set the initial URL before rendering the app
-if (window.location.pathname === '/') {
-  window.history.replaceState({}, '', initialPath);
-}
-
 const router = createBrowserRouter([
   // Public routes
+  {
+    path: "/",
+    element: <Landing />,
+  },
   {
     path: "/login",
     element: <Login />,
@@ -56,13 +45,13 @@ const router = createBrowserRouter([
     path: "/signup",
     element: <SignUp />,
   },
-  
+
   // Protected routes
   {
     element: <RequireAuth />,
     children: [
       {
-        path: "/",
+        path: "/home",
         element: <Home />,
       },
       {
@@ -97,7 +86,7 @@ const router = createBrowserRouter([
         path: "/rewards",
         element: <Awards />,
       },
-	{
+      {
         path: "/Dashboard",
         element: <Dashboard />,
       },
@@ -133,15 +122,13 @@ const router = createBrowserRouter([
         path: "/progress",
         element: <Progress />,
       },
-
-    ]
+    ],
   },
-  
-  // Catch-all route for unknown paths
+
   {
     path: "*",
     element: <Navigate to="/" replace />,
-  }
+  },
 ]);
 
 ReactDOM.render(

@@ -117,8 +117,7 @@ const Login = () => {
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (token) {
-      // If token exists, redirect to home page
-      navigate("/");
+      navigate("/home");
     }
   }, [navigate]);
 
@@ -148,7 +147,7 @@ const Login = () => {
         // Store user data in localStorage
         localStorage.setItem("data", JSON.stringify(response.data.user));
         // Redirect to home page
-        navigate("/");
+        navigate("/home");
       })
       .catch((error) => {
         console.log(error);

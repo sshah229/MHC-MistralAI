@@ -172,7 +172,7 @@ const Breathing = () => {
                 Do Again
               </button>
               <button
-                onClick={() => navigate("/")}
+                onClick={() => navigate("/home")}
                 className="bg-teal-500 text-white px-6 py-3 rounded-xl hover:bg-teal-600 transition"
               >
                 Back to Chat

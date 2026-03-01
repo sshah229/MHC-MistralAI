@@ -14,7 +14,7 @@ const navigations = [
   {
     id: 1,
     name: "Home",
-    path: "/",
+    path: "/home",
     Icon: ({ color }) => <FiHome size={25} color={color} />,
   },
   {
