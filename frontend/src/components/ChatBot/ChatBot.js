@@ -232,7 +232,7 @@ function Avatar({
             morphTargetDictionaryLowerTeeth,
             "HG_TeethLower"
           ),
-        ];
+        ].filter(Boolean);
 
         filename = host + filename;
         console.log(filename);
@@ -290,6 +290,7 @@ function Avatar({
     if (playing === false) return;
 
     _.each(clips, (clip) => {
+      if (!clip) return;
       let clipAction = mixer.clipAction(clip);
       clipAction.setLoop(THREE.LoopOnce);
       clipAction.play();
@@ -314,7 +315,8 @@ async function makeSpeech(text) {
   try {
     const elevenLabsRes = await axios.post(host + "voice/speak", { text });
     if (hasValidFilename(elevenLabsRes?.data)) {
-      return { data: { blendData: [], filename: elevenLabsRes.data.filename } };
+      const blendData = Array.isArray(elevenLabsRes.data.blendData) ? elevenLabsRes.data.blendData : [];
+      return { data: { blendData, filename: elevenLabsRes.data.filename } };
     }
     throw new Error("ElevenLabs returned no filename");
   } catch (elevenErr) {
@@ -359,14 +361,14 @@ const STYLES = {
 };
 
 const LANGUAGES = [
-  { code: "", label: "English" },
-  { code: "Hindi", label: "Hindi" },
-  { code: "Spanish", label: "Spanish" },
-  { code: "French", label: "French" },
-  { code: "German", label: "German" },
-  { code: "Portuguese", label: "Portuguese" },
-  { code: "Japanese", label: "Japanese" },
-  { code: "Chinese", label: "Chinese" },
+  { code: "", label: "English", sttCode: "en" },
+  { code: "Hindi", label: "Hindi", sttCode: "hi" },
+  { code: "Spanish", label: "Spanish", sttCode: "es" },
+  { code: "French", label: "French", sttCode: "fr" },
+  { code: "German", label: "German", sttCode: "de" },
+  { code: "Portuguese", label: "Portuguese", sttCode: "pt" },
+  { code: "Japanese", label: "Japanese", sttCode: "ja" },
+  { code: "Chinese", label: "Chinese", sttCode: "zh" },
 ];
 
 const ChatBot = () => {
@@ -417,16 +419,16 @@ const ChatBot = () => {
     browserSupportsSpeechRecognition,
   } = useSpeechRecognition();
 
-  // useEffect(() => {
-  //   if (!recorderControls?.recordingBlob) return;
-  //   console.log(recorderControls?.recordingBlob);
-  // }, [recorderControls.recordingBlob]);
   const [recordState, setRecordState] = useState();
+  const [sttLoading, setSttLoading] = useState(false);
   const [imgSrc, setImgSrc] = useState(null);
   const imgRef = useRef();
   const start = () => {
+    resetTranscript();
     setRecordState(RecordState.START);
-    SpeechRecognition.startListening();
+    if (browserSupportsSpeechRecognition) {
+      SpeechRecognition.startListening({ continuous: true });
+    }
   };
 
   const user = JSON.parse(localStorage.getItem("data"));
@@ -666,12 +668,8 @@ const ChatBot = () => {
 
 
   const stop = async () => {
-    setUserMessage(transcript);
     setRecordState(RecordState.STOP);
     SpeechRecognition.stopListening();
-    console.log(transcript);
-    // setChats([...chats, { role: "User", msg: transcript }]);
-    getResponse(transcript);
     capture();
   };
 
@@ -683,12 +681,45 @@ const ChatBot = () => {
     setImgSrc(imageSrc);
   }, [imgRef]);
 
-  const onStop = (audioData) => {
-    console.log("audioData", audioData);
+  const onStop = async (audioData) => {
+    if (!audioData?.blob || audioData.blob.size === 0) return;
+
+    setSttLoading(true);
+    try {
+      const langEntry = LANGUAGES.find((l) => l.code === language);
+      const sttCode = langEntry?.sttCode || "en";
+
+      const formData = new FormData();
+      formData.append("audio", audioData.blob, "recording.wav");
+      formData.append("language_code", sttCode);
+
+      const { data } = await axios.post(host + "voice/listen", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+
+      const recognizedText = data.text?.trim() || "";
+      console.log("ElevenLabs STT result:", recognizedText);
+
+      if (recognizedText) {
+        setUserMessage(recognizedText);
+        getResponse(recognizedText);
+      } else {
+        console.warn("ElevenLabs returned empty transcript");
+        toast.warn("Could not recognize speech. Please try again.", {
+          position: "top-right",
+          autoClose: 3000,
+        });
+      }
+    } catch (err) {
+      console.error("STT error:", err);
+      toast.error("Speech recognition failed. Please try again.", {
+        position: "top-right",
+        autoClose: 3000,
+      });
+    } finally {
+      setSttLoading(false);
+    }
   };
-  if (!browserSupportsSpeechRecognition) {
-    return <span>Browser doesn't support speech recognition.</span>;
-  }
   return (
     <div className="w-full flex">
       <div className="w-0 h-0">
@@ -784,11 +815,14 @@ const ChatBot = () => {
             </button>
           </div>
           <div className="flex flex-col">
-            <p className="text-md text-white mb-2">{transcript}</p>
+            <p className="text-md text-white mb-2">
+              {sttLoading ? "Transcribing..." : transcript || ""}
+            </p>
             <div className="flex flex-row">
               <button
                 className="bg-teal-200 p-2 rounded text-lg w-[100px]"
                 onClick={start}
+                disabled={sttLoading}
               >
                 Start
               </button>
@@ -809,11 +843,12 @@ const ChatBot = () => {
                 {({ getScreenshot }) => (
                   <button
                     className="bg-red-200 p-2 rounded text-lg w-[100px] ml-4"
+                    disabled={sttLoading}
                     onClick={() => {
                       stop();
                     }}
                   >
-                    Stop
+                    {sttLoading ? "Processing..." : "Stop"}
                   </button>
                 )}
               </Webcam>
