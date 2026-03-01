@@ -26,11 +26,28 @@ import AudioReactRecorder, { RecordState } from "audio-react-recorder";
 import Webcam from "react-webcam";
 import { BiSolidUser } from "react-icons/bi";
 import { useNavigate } from "react-router-dom";
+import { toast } from "react-toastify";
 import * as faceapi from "face-api.js";
 const _ = require("lodash");
 
 const host = "http://localhost:3000/";
 const FACIAL_SENTIMENT_API = "http://localhost:5001/analyze";
+const DISTRESS_EMOTIONS = new Set(["fear", "sad", "angry", "disgust"]);
+const DISTRESS_CONSECUTIVE_THRESHOLD = 10;
+const EMERGENCY_CALL_COOLDOWN_MS = 10 * 60 * 1000;
+const SELF_HARM_PATTERNS = [
+  /\bi want to suicide\b/i,
+  /\bi want to kill myself\b/i,
+  /\bi will kill myself\b/i,
+  /\bi want to die\b/i,
+  /\bi should die\b/i,
+  /\bend my life\b/i,
+  /\bsuicide\b/i,
+  /\bself harm\b/i,
+  /\bharm myself\b/i,
+];
+const SAFETY_AUTO_CALL_RESPONSE =
+  "I am here with you. I have alerted your emergency contact for immediate support. Please stay where you are, take slow breaths, and focus on your safety right now.";
 function Avatar({
   avatar_url,
   speak,
@@ -378,6 +395,9 @@ const ChatBot = () => {
   const [facialEmotion, setFacialEmotion] = useState(null);
   const [faceModelsLoaded, setFaceModelsLoaded] = useState(false);
   const faceIntervalRef = useRef(null);
+  const distressStreakRef = useRef(0);
+  const emergencyInFlightRef = useRef(false);
+  const lastEmergencyCallAtRef = useRef(0);
   // End of play
   function playerEnded(e) {
     setAudioSource(null);
@@ -411,6 +431,61 @@ const ChatBot = () => {
 
   const user = JSON.parse(localStorage.getItem("data"));
   const email = user?.email;
+
+  const buildEmergencyReasonText = ({ reason, messageText, emotion }) => {
+    const parts = [];
+    if (reason) parts.push(`Reason: ${reason}`);
+    if (emotion) parts.push(`Detected emotion: ${emotion}`);
+    if (messageText) parts.push(`User message: ${String(messageText).slice(0, 180)}`);
+    return parts.join(". ");
+  };
+
+  const triggerEmergencyCall = async ({
+    reason,
+    messageText = "",
+    emotion = "",
+  }) => {
+    const now = Date.now();
+    if (!email) return;
+    if (emergencyInFlightRef.current) return;
+
+    if (now - lastEmergencyCallAtRef.current < EMERGENCY_CALL_COOLDOWN_MS) {
+      return;
+    }
+
+    emergencyInFlightRef.current = true;
+    try {
+      toast.error("Hold tight! Calling emergency contact...", {
+        position: "top-right",
+        autoClose: 5000,
+      });
+      const emergencyMessage = buildEmergencyReasonText({ reason, messageText, emotion });
+      const { data } = await axios.post("http://localhost:3000/emergency", {
+        email,
+        sessionId: sessionId || undefined,
+        message: emergencyMessage || "Automatic emergency alert from Sakhi.",
+      });
+      lastEmergencyCallAtRef.current = Date.now();
+      toast.success(`Emergency call queued: ${data.callSid || "sent"}`, {
+        position: "top-right",
+        autoClose: 6500,
+      });
+    } catch (err) {
+      const msg = err?.response?.data?.error || "Emergency alert failed.";
+      toast.error(msg, {
+        position: "top-right",
+        autoClose: 6500,
+      });
+    } finally {
+      emergencyInFlightRef.current = false;
+    }
+  };
+
+  const hasSelfHarmSignal = (text) => {
+    const value = String(text || "").trim();
+    if (!value) return false;
+    return SELF_HARM_PATTERNS.some((pattern) => pattern.test(value));
+  };
 
   useEffect(() => {
     if (email) {
@@ -482,6 +557,19 @@ const ChatBot = () => {
 
         if (topEmotion) {
           setFacialEmotion(topEmotion);
+
+          if (DISTRESS_EMOTIONS.has(topEmotion)) {
+            distressStreakRef.current += 1;
+            if (distressStreakRef.current >= DISTRESS_CONSECUTIVE_THRESHOLD) {
+              distressStreakRef.current = 0;
+              await triggerEmergencyCall({
+                reason: "Sustained high facial distress detected",
+                emotion: topEmotion,
+              });
+            }
+          } else {
+            distressStreakRef.current = 0;
+          }
         }
       } catch {}
     }, 3000);
@@ -522,6 +610,23 @@ const ChatBot = () => {
 
   const getResponse = async (message) => {
     try {
+      if (hasSelfHarmSignal(message)) {
+        await triggerEmergencyCall({
+          reason: "Possible self-harm intent detected in user speech",
+          messageText: message,
+        });
+
+        setText(SAFETY_AUTO_CALL_RESPONSE);
+        setChats((prev) => [
+          ...prev,
+          { role: "User", msg: message },
+          { role: "Guardian", msg: SAFETY_AUTO_CALL_RESPONSE, agent: "guardian" },
+        ]);
+        setInputText("");
+        setSpeak(true);
+        return;
+      }
+
       const { data } = await axios.post("http://localhost:3000/chatbot", {
         message: "Answer this as a mental health companion, a friend and you will support me no matter what " +
           message,
