@@ -1,8 +1,6 @@
 const express = require("express");
 const multer = require("multer");
-const { textToSpeechElevenLabs, speechToTextElevenLabs } = require("../../utils/elevenlabs");
-const fs = require("fs");
-const path = require("path");
+const textToSpeechAzure = require("../../helpers/tts");
 const router = express.Router();
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 25 * 1024 * 1024 } });
@@ -14,21 +12,19 @@ router.post("/voice/speak", async (req, res) => {
       return res.status(400).json({ error: "Missing text" });
     }
 
-    const { audioBuffer, blendData } = await textToSpeechElevenLabs(text, voice_id);
-
-    const randomStr = Math.random().toString(36).slice(2, 7);
-    const filename = `speech-${randomStr}.mp3`;
-    const publicDir = path.join(__dirname, "../../public");
-
-    if (!fs.existsSync(publicDir)) {
-      fs.mkdirSync(publicDir, { recursive: true });
+    // Keep ElevenLabs integration in codebase for track requirements,
+    // but run Azure-only in production demo path for speed/reliability.
+    const result = await textToSpeechAzure(text, req.body.voice || voice_id);
+    if (!result?.filename) {
+      throw new Error("Azure TTS returned no filename");
     }
-
-    fs.writeFileSync(path.join(publicDir, filename), audioBuffer);
-
-    return res.json({ filename, blendData });
+    return res.json({
+      filename: result.filename,
+      blendData: Array.isArray(result.blendData) ? result.blendData : [],
+      provider: "azure",
+    });
   } catch (err) {
-    console.error("ElevenLabs TTS error:", err.message);
+    console.error("Voice synthesis failed:", err?.errors || err?.message || err);
     return res.status(500).json({ error: "Voice synthesis failed" });
   }
 });
@@ -38,21 +34,10 @@ router.post("/voice/listen", upload.single("audio"), async (req, res) => {
     if (!req.file) {
       return res.status(400).json({ error: "No audio file provided" });
     }
-
-    const languageCode = req.body.language_code || null;
-    const result = await speechToTextElevenLabs(
-      req.file.buffer,
-      req.file.originalname,
-      languageCode
-    );
-
-    return res.json({
-      text: result.text || "",
-      language_code: result.language_code || null,
-      words: result.words || [],
-    });
+    // Browser STT fallback is used in the frontend for low latency/reliability.
+    return res.status(501).json({ error: "Server STT disabled; use browser transcript fallback." });
   } catch (err) {
-    console.error("ElevenLabs STT error:", err?.response?.data || err.message);
+    console.error("Voice listen route error:", err?.response?.data || err.message);
     return res.status(500).json({ error: "Speech recognition failed" });
   }
 });

@@ -312,23 +312,13 @@ async function makeSpeech(text) {
   const hasValidFilename = (payload) =>
     payload && typeof payload.filename === "string" && payload.filename.trim().length > 0;
 
-  try {
-    const elevenLabsRes = await axios.post(host + "voice/speak", { text });
-    if (hasValidFilename(elevenLabsRes?.data)) {
-      const blendData = Array.isArray(elevenLabsRes.data.blendData) ? elevenLabsRes.data.blendData : [];
-      return { data: { blendData, filename: elevenLabsRes.data.filename } };
-    }
-    throw new Error("ElevenLabs returned no filename");
-  } catch (elevenErr) {
-    console.warn("ElevenLabs failed, trying /talk fallback:", elevenErr?.message);
+  const ttsRes = await axios.post(host + "voice/speak", { text }, { timeout: 8000 });
+  if (hasValidFilename(ttsRes?.data)) {
+    const blendData = Array.isArray(ttsRes.data.blendData) ? ttsRes.data.blendData : [];
+    return { data: { blendData, filename: ttsRes.data.filename } };
   }
 
-  const fallbackRes = await axios.post(host + "talk", { text });
-  if (hasValidFilename(fallbackRes?.data)) {
-    return fallbackRes;
-  }
-
-  throw new Error("Both ElevenLabs and /talk fallback failed to produce audio");
+  throw new Error("Voice synthesis failed to produce audio");
 }
 
 const STYLES = {
@@ -681,43 +671,22 @@ const ChatBot = () => {
     setImgSrc(imageSrc);
   }, [imgRef]);
 
-  const onStop = async (audioData) => {
-    if (!audioData?.blob || audioData.blob.size === 0) return;
-
+  const onStop = async () => {
     setSttLoading(true);
     try {
-      const langEntry = LANGUAGES.find((l) => l.code === language);
-      const sttCode = langEntry?.sttCode || "en";
-
-      const formData = new FormData();
-      formData.append("audio", audioData.blob, "recording.wav");
-      formData.append("language_code", sttCode);
-
-      const { data } = await axios.post(host + "voice/listen", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
-
-      const recognizedText = data.text?.trim() || "";
-      console.log("ElevenLabs STT result:", recognizedText);
-
-      if (recognizedText) {
-        setUserMessage(recognizedText);
-        getResponse(recognizedText);
+      const browserText = transcript?.trim() || "";
+      if (browserText) {
+        setUserMessage(browserText);
+        getResponse(browserText);
       } else {
-        console.warn("ElevenLabs returned empty transcript");
         toast.warn("Could not recognize speech. Please try again.", {
           position: "top-right",
           autoClose: 3000,
         });
       }
-    } catch (err) {
-      console.error("STT error:", err);
-      toast.error("Speech recognition failed. Please try again.", {
-        position: "top-right",
-        autoClose: 3000,
-      });
     } finally {
       setSttLoading(false);
+      resetTranscript();
     }
   };
   return (

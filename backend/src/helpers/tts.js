@@ -11,9 +11,8 @@ let SSML = `<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" xml
 </voice>
 </speak>`;
 
-const key =
-  "GER7mherzw3KPz8pYKDywCocC3tQZGu3ihFO6EdGsF38Yl5uSFeFJQQJ99BCAC4f1cMXJ3w3AAAYACOG2Lfc";
-const region = "westus";
+const key = process.env.AZURE_SPEECH_KEY;
+const region = process.env.AZURE_SPEECH_REGION;
 
 /**
  * Node.js server code to convert text to speech
@@ -26,6 +25,14 @@ const region = "westus";
 const textToSpeech = async (text, voice) => {
   // convert callback function to promise
   return new Promise((resolve, reject) => {
+    if (!key || !region) {
+      return reject(
+        new Error(
+          "Azure speech is not configured. Set AZURE_SPEECH_KEY and AZURE_SPEECH_REGION."
+        )
+      );
+    }
+
     let ssml = SSML.replace("__TEXT__", text);
 
     // console.log(text)
