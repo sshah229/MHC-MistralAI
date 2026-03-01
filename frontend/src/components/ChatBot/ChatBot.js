@@ -22,11 +22,11 @@ import SpeechRecognition, {
 } from "react-speech-recognition";
 import * as THREE from "three";
 import axios from "axios";
-import AudioReactRecorder, { RecordState } from "audio-react-recorder";
 import Webcam from "react-webcam";
 import { BiSolidUser } from "react-icons/bi";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
+import { FiMic, FiMicOff, FiPauseCircle } from "react-icons/fi";
 import * as faceapi from "face-api.js";
 const _ = require("lodash");
 
@@ -35,6 +35,9 @@ const FACIAL_SENTIMENT_API = "http://localhost:5001/analyze";
 const DISTRESS_EMOTIONS = new Set(["fear", "sad", "angry", "disgust"]);
 const DISTRESS_CONSECUTIVE_THRESHOLD = 10;
 const EMERGENCY_CALL_COOLDOWN_MS = 10 * 60 * 1000;
+const SILENCE_SUBMIT_MS = 1400;
+const HANDS_FREE_MAX_MS = 3 * 60 * 1000;
+const AUTO_RESTART_MS = 450;
 const SELF_HARM_PATTERNS = [
   /\bi want to suicide\b/i,
   /\bi want to kill myself\b/i,
@@ -370,7 +373,6 @@ const ChatBot = () => {
     facingMode: "user",
   };
   const audioPlayer = useRef();
-  const [userMessage, setUserMessage] = useState("");
 
   const [speak, setSpeak] = useState(false);
   const [text, setText] = useState(
@@ -387,20 +389,38 @@ const ChatBot = () => {
   const [facialEmotion, setFacialEmotion] = useState(null);
   const [faceModelsLoaded, setFaceModelsLoaded] = useState(false);
   const faceIntervalRef = useRef(null);
+  const silenceTimerRef = useRef(null);
+  const handsFreeTimerRef = useRef(null);
+  const autoRestartTimerRef = useRef(null);
   const distressStreakRef = useRef(0);
   const emergencyInFlightRef = useRef(false);
   const lastEmergencyCallAtRef = useRef(0);
+  const [handsFree, setHandsFree] = useState(false);
+  const [voiceUiState, setVoiceUiState] = useState("idle");
   // End of play
   function playerEnded(e) {
     setAudioSource(null);
     setSpeak(false);
     setPlaying(false);
+    if (handsFree) {
+      setVoiceUiState("listening");
+      if (autoRestartTimerRef.current) clearTimeout(autoRestartTimerRef.current);
+      autoRestartTimerRef.current = setTimeout(() => {
+        if (!sttLoading) {
+          resetTranscript();
+          SpeechRecognition.startListening({ continuous: true });
+        }
+      }, AUTO_RESTART_MS);
+    } else {
+      setVoiceUiState("idle");
+    }
   }
   const name = JSON.parse(localStorage.getItem("data"))?.name;
   // Player is read
   function playerReady(e) {
     audioPlayer.current.audioEl.current.play();
     setPlaying(true);
+    setVoiceUiState("speaking");
   }
   const {
     transcript,
@@ -409,20 +429,24 @@ const ChatBot = () => {
     browserSupportsSpeechRecognition,
   } = useSpeechRecognition();
 
-  const [recordState, setRecordState] = useState();
   const [sttLoading, setSttLoading] = useState(false);
-  const [imgSrc, setImgSrc] = useState(null);
   const imgRef = useRef();
-  const start = () => {
-    resetTranscript();
-    setRecordState(RecordState.START);
-    if (browserSupportsSpeechRecognition) {
-      SpeechRecognition.startListening({ continuous: true });
-    }
-  };
 
   const user = JSON.parse(localStorage.getItem("data"));
   const email = user?.email;
+
+  const clearVoiceTimers = () => {
+    if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+    if (handsFreeTimerRef.current) clearTimeout(handsFreeTimerRef.current);
+    if (autoRestartTimerRef.current) clearTimeout(autoRestartTimerRef.current);
+  };
+
+  const startListeningSession = () => {
+    if (!browserSupportsSpeechRecognition || sttLoading || playing) return;
+    resetTranscript();
+    SpeechRecognition.startListening({ continuous: true });
+    setVoiceUiState("listening");
+  };
 
   const buildEmergencyReasonText = ({ reason, messageText, emotion }) => {
     const parts = [];
@@ -477,6 +501,67 @@ const ChatBot = () => {
     const value = String(text || "").trim();
     if (!value) return false;
     return SELF_HARM_PATTERNS.some((pattern) => pattern.test(value));
+  };
+
+  const submitSpeechTurn = async (rawText, { showWarning = true } = {}) => {
+    const browserText = String(rawText || "").trim();
+    if (!browserText) {
+      if (showWarning) {
+        toast.warn("Could not recognize speech. Please try again.", {
+          position: "top-right",
+          autoClose: 3000,
+        });
+      }
+      return false;
+    }
+
+    setSttLoading(true);
+    setVoiceUiState("processing");
+    try {
+      await getResponse(browserText);
+      return true;
+    } finally {
+      setSttLoading(false);
+      setVoiceUiState("idle");
+      resetTranscript();
+    }
+  };
+
+  const stopListeningAndSubmit = async ({ showWarning = true } = {}) => {
+    SpeechRecognition.stopListening();
+    if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+    await submitSpeechTurn(transcript, { showWarning });
+  };
+
+  const handleMicButton = async () => {
+    if (sttLoading) return;
+    if (listening) {
+      await stopListeningAndSubmit({ showWarning: !handsFree });
+      return;
+    }
+    startListeningSession();
+  };
+
+  const toggleHandsFree = () => {
+    const next = !handsFree;
+    setHandsFree(next);
+    if (!next) {
+      SpeechRecognition.stopListening();
+      clearVoiceTimers();
+      setVoiceUiState("idle");
+      return;
+    }
+    setVoiceUiState("listening");
+    startListeningSession();
+    handsFreeTimerRef.current = setTimeout(() => {
+      setHandsFree(false);
+      SpeechRecognition.stopListening();
+      setVoiceUiState("idle");
+      toast.info("Hands-free paused after 3 minutes. Tap to resume.", {
+        position: "top-right",
+        autoClose: 2500,
+      });
+    }, HANDS_FREE_MAX_MS);
   };
 
   useEffect(() => {
@@ -656,44 +741,42 @@ const ChatBot = () => {
     }
   };
 
+  useEffect(() => {
+    if (!listening || sttLoading || playing) return;
+    const value = transcript?.trim();
+    if (!value) return;
 
-  const stop = async () => {
-    setRecordState(RecordState.STOP);
-    SpeechRecognition.stopListening();
-    capture();
+    if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+    silenceTimerRef.current = setTimeout(async () => {
+      await stopListeningAndSubmit({ showWarning: !handsFree });
+    }, SILENCE_SUBMIT_MS);
+
+    return () => {
+      if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+    };
+  }, [transcript, listening, sttLoading, playing, handsFree]);
+
+  useEffect(() => {
+    return () => {
+      clearVoiceTimers();
+    };
+  }, []);
+
+  if (!browserSupportsSpeechRecognition) {
+    return <span>Browser doesn't support speech recognition.</span>;
+  }
+
+  const voiceStatusByState = {
+    idle: "Mic ready",
+    listening: "Listening...",
+    processing: "Processing...",
+    speaking: "Speaking...",
+    paused: "Paused",
   };
+  const voiceStatusLabel = transcript || voiceStatusByState[voiceUiState] || "Mic ready";
 
-  const capture = React.useCallback(async () => {
-    const imageSrc = imgRef.current.getScreenshot();
-    const blob = await fetch(imageSrc).then((res) => res.blob());
-    let file = new File([blob], "photo", { type: "image/jpeg" });
-    console.log(file);
-    setImgSrc(imageSrc);
-  }, [imgRef]);
-
-  const onStop = async () => {
-    setSttLoading(true);
-    try {
-      const browserText = transcript?.trim() || "";
-      if (browserText) {
-        setUserMessage(browserText);
-        getResponse(browserText);
-      } else {
-        toast.warn("Could not recognize speech. Please try again.", {
-          position: "top-right",
-          autoClose: 3000,
-        });
-      }
-    } finally {
-      setSttLoading(false);
-      resetTranscript();
-    }
-  };
   return (
     <div className="w-full flex">
-      <div className="w-0 h-0">
-        <AudioReactRecorder state={recordState} onStop={onStop} />
-      </div>
       <div className="absolute flex items-center right-4 top-4 z-[1000]">
         <select
           value={language}
@@ -784,20 +867,40 @@ const ChatBot = () => {
             </button>
           </div>
           <div className="flex flex-col">
-            <p className="text-md text-white mb-2">
-              {sttLoading ? "Transcribing..." : transcript || ""}
-            </p>
-            <div className="flex flex-row">
+            <p className="text-md text-white mb-2">{voiceStatusLabel}</p>
+            <div className="flex flex-row items-center gap-3">
               <button
-                className="bg-teal-200 p-2 rounded text-lg w-[100px]"
-                onClick={start}
+                className={`p-3 rounded-full text-lg w-[56px] h-[56px] flex items-center justify-center transition ${
+                  listening ? "bg-red-200 text-red-700" : "bg-teal-200 text-teal-700"
+                } ${sttLoading ? "opacity-60 cursor-not-allowed" : ""}`}
+                onClick={handleMicButton}
                 disabled={sttLoading}
+                title={listening ? "Stop and send" : "Start listening"}
               >
-                Start
+                {listening ? <FiMicOff size={22} /> : <FiMic size={22} />}
               </button>
+              <button
+                className={`px-3 py-2 rounded-full text-sm transition ${
+                  handsFree ? "bg-purple-200 text-purple-800" : "bg-white/80 text-gray-700"
+                }`}
+                onClick={toggleHandsFree}
+                disabled={sttLoading}
+                title="Toggle hands-free mode"
+              >
+                Hands-free: {handsFree ? "On" : "Off"}
+              </button>
+              {handsFree && (
+                <button
+                  className="p-2 rounded-full bg-white/80 text-gray-700"
+                  onClick={toggleHandsFree}
+                  title="Pause hands-free"
+                >
+                  <FiPauseCircle size={22} />
+                </button>
+              )}
 
               {facialEmotion && (
-                <span className="bg-indigo-100 text-indigo-700 px-3 py-1 rounded-full text-sm ml-4">
+                <span className="bg-indigo-100 text-indigo-700 px-3 py-1 rounded-full text-sm">
                   Detected: {facialEmotion}
                 </span>
               )}
@@ -809,15 +912,12 @@ const ChatBot = () => {
                 width={0}
                 videoConstraints={videoConstraints}
               >
-                {({ getScreenshot }) => (
+                {() => (
                   <button
-                    className="bg-red-200 p-2 rounded text-lg w-[100px] ml-4"
-                    disabled={sttLoading}
-                    onClick={() => {
-                      stop();
-                    }}
+                    className="hidden"
+                    aria-hidden
                   >
-                    {sttLoading ? "Processing..." : "Stop"}
+                    Hidden capture trigger
                   </button>
                 )}
               </Webcam>

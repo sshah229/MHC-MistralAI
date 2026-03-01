@@ -112,7 +112,7 @@ async function orchestrate(message, email, language, sessionId) {
       { role: "system", content: AGENT_PROMPTS.guardian.system + moodContext + (language ? ` Respond in ${language}.` : "") },
       { role: "user", content: message },
     ];
-    const answer = await chatCompletion(guardianMessages, { maxTokens: 300 });
+    const answer = await chatCompletion(guardianMessages, { maxTokens: 180 });
 
     if (session) {
       session.messages.push({ role: "assistant", content: answer, agent: "guardian" });
@@ -146,7 +146,7 @@ async function orchestrate(message, email, language, sessionId) {
     { role: "user", content: message },
   ];
 
-  const answer = await chatCompletion(agentMessages, { temperature: 0.8, maxTokens: 300 });
+  const answer = await chatCompletion(agentMessages, { temperature: 0.8, maxTokens: 180 });
 
   if (session) {
     session.messages.push({ role: "assistant", content: answer, agent: selectedAgent });
