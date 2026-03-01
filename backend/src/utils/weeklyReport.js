@@ -7,6 +7,10 @@ const mongoUrl = process.env.MONGODB_URL;
 async function generateWeeklyReport(email) {
   let client;
   try {
+    if (!email) {
+      throw new Error("Missing email for weekly report");
+    }
+
     client = await MongoClient.connect(mongoUrl, {
       useNewUrlParser: true,
       useUnifiedTopology: true,
@@ -17,13 +21,13 @@ async function generateWeeklyReport(email) {
 
     const emotionLogs = await db
       .collection("emotion_logs")
-      .find({ timestamp: { $gte: oneWeekAgo } })
+      .find({ email, timestamp: { $gte: oneWeekAgo } })
       .sort({ timestamp: 1 })
       .toArray();
 
     const journalEntries = await db
       .collection("journal")
-      .find({ timestamp: { $gte: oneWeekAgo } })
+      .find({ email, timestamp: { $gte: oneWeekAgo } })
       .sort({ timestamp: 1 })
       .toArray();
 

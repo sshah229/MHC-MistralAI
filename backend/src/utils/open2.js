@@ -5,7 +5,7 @@ require("dotenv").config();
 const mongoUrl = process.env.MONGODB_URL;
 let running_message = "";
 
-async function AnalyzeEmotion(prompt) {
+async function AnalyzeEmotion(prompt, email) {
   running_message += prompt + "\n";
 
   const emotionMessages = [
@@ -32,6 +32,7 @@ async function AnalyzeEmotion(prompt) {
 
     entry = {
       ...parsed,
+      email: email || null,
       timestamp: new Date().toISOString(),
     };
 
@@ -60,6 +61,7 @@ async function AnalyzeEmotion(prompt) {
 
       const journalEntry = {
         summary: summaryText,
+        email: email || null,
         timestamp: new Date().toISOString(),
         latest_emotion_category: parsed.emotion_category,
         latest_emotion_intensity: parsed.emotion_intensity,

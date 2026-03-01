@@ -24,6 +24,7 @@ const SoulReport = () => {
   const [report, setReport] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [exporting, setExporting] = useState(false);
 
   const user = JSON.parse(localStorage.getItem("data") || "{}");
 
@@ -77,14 +78,35 @@ const SoulReport = () => {
     time: new Date(e.timestamp).toLocaleDateString(),
   })) || [];
 
+  const handleExportPdf = () => {
+    // Browser-native PDF export flow (Print -> Save as PDF).
+    setExporting(true);
+    setTimeout(() => {
+      window.print();
+      setExporting(false);
+    }, 100);
+  };
+
   return (
     <div className="flex flex-row w-full min-h-screen">
-      <Navbar />
+      <div className="no-print">
+        <Navbar />
+      </div>
       <div className="flex-1 p-8 bg-gradient-to-br from-purple-50 to-indigo-50 overflow-y-auto">
         <div className="max-w-4xl mx-auto space-y-6">
           <div className="text-center mb-8">
             <h1 className="text-3xl font-bold text-purple-800">Weekly Soul Report</h1>
             <p className="text-gray-500 mt-1">Your emotional journey over the past 7 days</p>
+          </div>
+
+          <div className="flex justify-end no-print">
+            <button
+              onClick={handleExportPdf}
+              disabled={exporting}
+              className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition disabled:opacity-70"
+            >
+              {exporting ? "Preparing PDF..." : "Export PDF"}
+            </button>
           </div>
 
           {report?.headline && (
@@ -175,6 +197,16 @@ const SoulReport = () => {
           )}
         </div>
       </div>
+      <style>{`
+        @media print {
+          .no-print {
+            display: none !important;
+          }
+          body {
+            background: #ffffff !important;
+          }
+        }
+      `}</style>
     </div>
   );
 };
