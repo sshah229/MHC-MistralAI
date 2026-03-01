@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { recommendDoctors } from "./utils/recommendations";
+import { recommendDoctors, blackBoxDiagnosis } from "./utils/recommendations";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { gapi } from "gapi-script";
@@ -21,20 +21,20 @@ function SearchDocs() {
     getDiagnosis();
   }, []);
   const getDiagnosis = async () => {
+    let diag = null;
     try {
       const response = await fetch("http://localhost:3000/diagnose", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
       });
       const data = await response.json();
-      console.log("DIAGNOSIS: ", data);
-      setDiagnosis(data.diagnosis);
-      setDoctors(recommendDoctors(data.diagnosis, 5));
+      if (data.diagnosis) diag = data.diagnosis;
     } catch (error) {
-      console.error("Error fetching diagnosis:", error);
+      console.error("Backend diagnosis failed, using local fallback:", error);
     }
+    if (!diag) diag = blackBoxDiagnosis();
+    setDiagnosis(diag);
+    setDoctors(recommendDoctors(diag, 5));
   };
   useEffect(() => {
     function initClient() {
