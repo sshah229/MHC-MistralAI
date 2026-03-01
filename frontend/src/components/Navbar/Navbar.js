@@ -1,11 +1,12 @@
 import React, { useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { FiHome, FiActivity } from "react-icons/fi";
+import { FiHome, FiActivity, FiWind } from "react-icons/fi";
 import { SiPlanet } from "react-icons/si";
 import { BiSolidReport, BiLogOut, BiSolidPhoneCall } from "react-icons/bi";
 import { FaUserDoctor, FaAward } from "react-icons/fa6";
 import { MdOutlineFoodBank } from "react-icons/md";
 import { BsFillChatLeftTextFill, BsJournalText } from "react-icons/bs";
+import { HiSparkles } from "react-icons/hi";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import logo from "../../assets/logo.png";
@@ -102,8 +103,20 @@ const navigations = [
   },
   {
     id: 10,
+    path: "/breathing",
+    name: "Breathing",
+    Icon: ({ color }) => <FiWind size={25} color={color} />,
+  },
+  {
+    id: 11,
+    path: "/soul-report",
+    name: "Soul Report",
+    Icon: ({ color }) => <HiSparkles size={25} color={color} />,
+  },
+  {
+    id: 12,
     name: "Emergency Call",
-    path: "/emergency", // Added a path for emergency
+    path: "/emergency",
     Icon: ({ color }) => <BiSolidPhoneCall size={25} color={color} />,
   },
 ];

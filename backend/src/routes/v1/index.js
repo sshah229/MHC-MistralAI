@@ -11,6 +11,10 @@ const router = express.Router();
 const planRoute = require("./plan.route");
 const dietRoute = require("./diet.route");
 const goalRoute = require("./goal.route");
+const sessionRoute = require("./session.route");
+const voiceRoute = require("./voice.route");
+const breathingRoute = require("./breathing.route");
+const weeklyReportRoute = require("./weeklyReport.route");
 
 const defaultRoutes = [
   {
@@ -56,6 +60,10 @@ const defaultRoutes = [
 ];
 
 router.use("/goals", goalRoute);
+router.use("", sessionRoute);
+router.use("", voiceRoute);
+router.use("", breathingRoute);
+router.use("", weeklyReportRoute);
 
 defaultRoutes.forEach((route) => {
   router.use(route.path, route.route);

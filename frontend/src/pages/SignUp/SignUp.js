@@ -49,6 +49,9 @@ const SignUp = () => {
     } else if (data.password !== pass) {
       alert("Passwords don't match");
       return;
+    } else if (data.password.length < 8 || !/\d/.test(data.password) || !/[a-zA-Z]/.test(data.password)) {
+      alert("Password must be at least 8 characters and contain at least 1 letter and 1 number");
+      return;
     }
     let config = {
       method: "post",
@@ -63,10 +66,16 @@ const SignUp = () => {
       .request(config)
       .then((response) => {
         console.log(JSON.stringify(response.data));
+        alert("Registration successful! Please login.");
         navigate("/login");
       })
       .catch((error) => {
         console.log(error);
+        const msg =
+          error.response?.data?.message ||
+          error.response?.data?.error ||
+          "Registration failed. Make sure password is at least 8 characters with at least 1 letter and 1 number.";
+        alert(msg);
       });
   };
   return (

@@ -17,6 +17,8 @@ import Awards from "./pages/Awards/Awards";
 import Home from "./pages/Home/Home";
 import GoalTrackerPage from "./pages/GoalTracker/GoalTrackerPage";
 import Journal from "./pages/Journal/Journal";
+import Breathing from "./pages/Breathing/Breathing";
+import SoulReport from "./pages/SoulReport/SoulReport";
 
 // Auth check component - returns outlet or redirect based on auth state
 const RequireAuth = () => {
@@ -102,6 +104,14 @@ const router = createBrowserRouter([
       {
         path: "/journal",
         element: <Journal />,
+      },
+      {
+        path: "/breathing",
+        element: <Breathing />,
+      },
+      {
+        path: "/soul-report",
+        element: <SoulReport />,
       },
 
     ]

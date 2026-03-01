@@ -1,11 +1,4 @@
-const axios = require("axios");
-require("dotenv").config();
-
-const endpoint = "https://odlu-ma8jnrto-northcentralus.openai.azure.com/";
-const deployment = "gpt-4-04-14";
-const apiVersion = "2024-12-01-preview";
-const apiKey =
-  "1d1zZFOvzVjDePwMu8dOugdYD28KsXUVzQqyWFgMDIfwAWlWXHc7JQQJ99BEACHrzpqXJ3w3AAAAACOGkkHl";
+const { chatCompletion } = require("./mistral");
 
 const baseMessages = [
   {
@@ -15,39 +8,23 @@ const baseMessages = [
   },
 ];
 
-async function QueryGPT(prompt) {
-  const messages = [...baseMessages, { role: "user", content: prompt }];
+async function QueryGPT(prompt, language) {
+  const systemMsg = language
+    ? [{ ...baseMessages[0], content: baseMessages[0].content + ` Respond in ${language}.` }]
+    : baseMessages;
+
+  const messages = [...systemMsg, { role: "user", content: prompt }];
 
   try {
-    const url = `${endpoint}openai/deployments/${deployment}/chat/completions?api-version=${apiVersion}`;
-
-    const response = await axios.post(
-      url,
-      {
-        messages,
-        temperature: 1.0,
-        top_p: 1.0,
-        frequency_penalty: 0.0,
-        presence_penalty: 0.0,
-        max_tokens: 300,
-      },
-      {
-        headers: {
-          "Content-Type": "application/json",
-          "api-key": apiKey,
-        },
-      }
-    );
-
-    const reply = response.data.choices[0].message.content.trim();
-    console.log("Response from Azure OpenAI:", reply);
+    const reply = await chatCompletion(messages, {
+      temperature: 1.0,
+      maxTokens: 300,
+    });
+    console.log("Response from Mistral:", reply);
     return reply;
   } catch (error) {
-    console.error(
-      "Error from Azure OpenAI:",
-      error.response?.data || error.message
-    );
-    return "Oops! Something went wrong with Azure OpenAI.";
+    console.error("Error from Mistral:", error.message);
+    return "Oops! Something went wrong.";
   }
 }
 

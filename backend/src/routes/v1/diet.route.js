@@ -1,5 +1,4 @@
 const express = require("express");
-const openai = require("../../utils/open.conf");
 const query = require("../../utils/open");
 const router = express.Router();
 const { getUserFunction } = require("../../controllers/user.controller");

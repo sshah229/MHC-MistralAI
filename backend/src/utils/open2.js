@@ -1,40 +1,9 @@
-const axios = require("axios");
+const { chatCompletion } = require("./mistral");
 const { MongoClient } = require("mongodb");
 require("dotenv").config();
 
-// Azure OpenAI settings
-const endpoint = "https://odlu-ma8jnrto-northcentralus.openai.azure.com/";
-const deployment = "gpt-4-04-14";
-const apiVersion = "2024-12-01-preview";
-const apiKey =
-  "1d1zZFOvzVjDePwMu8dOugdYD28KsXUVzQqyWFgMDIfwAWlWXHc7JQQJ99BEACHrzpqXJ3w3AAAAACOGkkHl";
-
 const mongoUrl = process.env.MONGODB_URL;
 let running_message = "";
-
-async function callAzureChat(messages, max_tokens = 300) {
-  const url = `${endpoint}openai/deployments/${deployment}/chat/completions?api-version=${apiVersion}`;
-
-  const response = await axios.post(
-    url,
-    {
-      messages,
-      temperature: 0.7,
-      top_p: 1.0,
-      frequency_penalty: 0.0,
-      presence_penalty: 0.0,
-      max_tokens: max_tokens,
-    },
-    {
-      headers: {
-        "Content-Type": "application/json",
-        "api-key": apiKey,
-      },
-    }
-  );
-
-  return response.data.choices[0].message.content.trim();
-}
 
 async function AnalyzeEmotion(prompt) {
   running_message += prompt + "\n";
@@ -57,8 +26,7 @@ async function AnalyzeEmotion(prompt) {
   let client;
 
   try {
-    // Get emotion analysis from Azure OpenAI
-    responseText = await callAzureChat(emotionMessages);
+    responseText = await chatCompletion(emotionMessages, { temperature: 0.3 });
     responseText = responseText.replace(/```json|```/g, "").trim();
     parsed = JSON.parse(responseText);
 
@@ -67,7 +35,6 @@ async function AnalyzeEmotion(prompt) {
       timestamp: new Date().toISOString(),
     };
 
-    // Insert into MongoDB
     client = await MongoClient.connect(mongoUrl, {
       useNewUrlParser: true,
       useUnifiedTopology: true,
@@ -76,7 +43,6 @@ async function AnalyzeEmotion(prompt) {
     await db.collection("emotion_logs").insertOne(entry);
     console.log("Inserted into emotion_logs:", entry);
 
-    // If intense emotion, generate journal summary
     if (parsed.emotion_intensity > 7) {
       const summaryMessages = [
         {
@@ -90,7 +56,7 @@ async function AnalyzeEmotion(prompt) {
         },
       ];
 
-      const summaryText = await callAzureChat(summaryMessages, 200);
+      const summaryText = await chatCompletion(summaryMessages, { maxTokens: 200 });
 
       const journalEntry = {
         summary: summaryText,

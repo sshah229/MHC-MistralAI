@@ -25,6 +25,8 @@ import axios from "axios";
 import AudioReactRecorder, { RecordState } from "audio-react-recorder";
 import Webcam from "react-webcam";
 import { BiSolidUser } from "react-icons/bi";
+import { useNavigate } from "react-router-dom";
+import * as faceapi from "face-api.js";
 const _ = require("lodash");
 
 const host = "http://localhost:3000/";
@@ -282,8 +284,13 @@ function Avatar({
   );
 }
 
-function makeSpeech(text) {
-  return axios.post(host + "talk", { text });
+async function makeSpeech(text) {
+  try {
+    const elevenLabsRes = await axios.post(host + "voice/speak", { text });
+    return { data: { blendData: [], filename: elevenLabsRes.data.filename } };
+  } catch {
+    return axios.post(host + "talk", { text });
+  }
 }
 
 const STYLES = {
@@ -315,7 +322,19 @@ const STYLES = {
   label: { color: "#777777", fontSize: "0.8em" },
 };
 
+const LANGUAGES = [
+  { code: "", label: "English" },
+  { code: "Hindi", label: "Hindi" },
+  { code: "Spanish", label: "Spanish" },
+  { code: "French", label: "French" },
+  { code: "German", label: "German" },
+  { code: "Portuguese", label: "Portuguese" },
+  { code: "Japanese", label: "Japanese" },
+  { code: "Chinese", label: "Chinese" },
+];
+
 const ChatBot = () => {
+  const navigate = useNavigate();
   const [chats, setChats] = useState([]);
   const videoConstraints = {
     width: 1280,
@@ -333,6 +352,13 @@ const ChatBot = () => {
   const [audioSource, setAudioSource] = useState(null);
   const [playing, setPlaying] = useState(false);
   const [inputText, setInputText] = useState("");
+  const [language, setLanguage] = useState("");
+  const [sessionId, setSessionId] = useState(null);
+  const [moodJourney, setMoodJourney] = useState(null);
+  const [sessionSummary, setSessionSummary] = useState(null);
+  const [facialEmotion, setFacialEmotion] = useState(null);
+  const [faceModelsLoaded, setFaceModelsLoaded] = useState(false);
+  const faceIntervalRef = useRef(null);
   // End of play
   function playerEnded(e) {
     setAudioSource(null);
@@ -363,9 +389,66 @@ const ChatBot = () => {
     setRecordState(RecordState.START);
     SpeechRecognition.startListening();
   };
-  // useEffect(() => {
-  //   getResponse();
-  // }, []);
+
+  const user = JSON.parse(localStorage.getItem("data"));
+  const email = user?.email;
+
+  useEffect(() => {
+    if (email) {
+      axios.post("http://localhost:3000/session/start", { userId: email })
+        .then(({ data }) => setSessionId(data.sessionId))
+        .catch((err) => console.error("Failed to start session:", err));
+    }
+  }, [email]);
+
+  useEffect(() => {
+    const loadFaceModels = async () => {
+      try {
+        await faceapi.nets.tinyFaceDetector.loadFromUri("/models");
+        await faceapi.nets.faceExpressionNet.loadFromUri("/models");
+        setFaceModelsLoaded(true);
+        console.log("Face-api models loaded");
+      } catch (err) {
+        console.error("Failed to load face-api models:", err);
+      }
+    };
+    loadFaceModels();
+    return () => {
+      if (faceIntervalRef.current) clearInterval(faceIntervalRef.current);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!faceModelsLoaded || !imgRef.current) return;
+    faceIntervalRef.current = setInterval(async () => {
+      try {
+        const video = imgRef.current?.video;
+        if (!video || video.readyState < 2) return;
+        const detections = await faceapi
+          .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions())
+          .withFaceExpressions();
+        if (detections?.expressions) {
+          const sorted = Object.entries(detections.expressions).sort((a, b) => b[1] - a[1]);
+          const topEmotion = sorted[0][0];
+          setFacialEmotion(topEmotion);
+        }
+      } catch {}
+    }, 3000);
+    return () => {
+      if (faceIntervalRef.current) clearInterval(faceIntervalRef.current);
+    };
+  }, [faceModelsLoaded]);
+
+  const endSession = async () => {
+    if (!sessionId) return;
+    try {
+      const { data } = await axios.post("http://localhost:3000/session/end", { sessionId });
+      setSessionSummary(data.summary);
+      setMoodJourney(data.moodTimeline);
+    } catch (err) {
+      console.error("Failed to end session:", err);
+    }
+  };
 
   const goalMap = {
     anxious: {
@@ -385,25 +468,29 @@ const ChatBot = () => {
     },
   };
 
-  const user = JSON.parse(localStorage.getItem("data"));
-  const email = user?.email;
-
   const getResponse = async (message) => {
     try {
       const { data } = await axios.post("http://localhost:3000/chatbot", {
         message: "Answer this as a mental health companion, a friend and you will support me no matter what " +
           message,
         email,
+        language: language || undefined,
+        sessionId: sessionId || undefined,
+        facialEmotion: facialEmotion || undefined,
       });
-      const { answer, sentiment } = data;
+      const { answer, sentiment, agent, agentName, action } = data;
       setText(answer);
       setChats(prev => [
         ...prev,
         { role: "User", msg: message },
-        { role: "Companion", msg: answer },
+        { role: agentName || "Companion", msg: answer, agent },
       ]);
       setInputText("");
       setSpeak(true);
+
+      if (action === "breathing_exercise") {
+        setTimeout(() => navigate("/breathing"), 3000);
+      }
 
       const key = sentiment?.toLowerCase();
       const chosen = goalMap[key];
@@ -451,6 +538,17 @@ const ChatBot = () => {
         <AudioReactRecorder state={recordState} onStop={onStop} />
       </div>
       <div className="absolute flex items-center right-4 top-4 z-[1000]">
+        <select
+          value={language}
+          onChange={(e) => setLanguage(e.target.value)}
+          className="mr-4 px-3 py-1.5 rounded-lg bg-white/80 text-sm border border-sky-300 text-sky-700 outline-none"
+        >
+          {LANGUAGES.map((lang) => (
+            <option key={lang.code} value={lang.code}>
+              {lang.label}
+            </option>
+          ))}
+        </select>
         <h1 className="text-xl text-sky-500 mr-4">{name}</h1>
         <div className="h-12 w-12 rounded-full bg-gray-300/30 flex justify-center items-center text-sky-500">
           <BiSolidUser size={30} />
@@ -474,12 +572,27 @@ const ChatBot = () => {
               <h1 className="text-center text-xl font-semibold mb-2">
                 Chat Window
               </h1>
-              {chats?.map((chat) => (
-                <h1 className="text-lg">
-                  <span className="font-semibold">{chat.role}</span> :{" "}
-                  {chat.msg}
-                </h1>
-              ))}
+              {chats?.map((chat, idx) => {
+                const agentColors = {
+                  listener: "bg-blue-100 text-blue-700",
+                  coach: "bg-green-100 text-green-700",
+                  guardian: "bg-red-100 text-red-700",
+                };
+                const badgeClass = chat.agent ? agentColors[chat.agent] || "" : "";
+                return (
+                  <div key={idx} className="mb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-lg">{chat.role}</span>
+                      {chat.agent && (
+                        <span className={`text-xs px-2 py-0.5 rounded-full ${badgeClass}`}>
+                          {chat.role}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-lg">{chat.msg}</p>
+                  </div>
+                );
+              })}
             </div>
             <div className="mt-4 bg-white flex flex-row p-2 rounded">
               <input
@@ -499,12 +612,20 @@ const ChatBot = () => {
               </button>
             </div>
           </div>
-          <button
-            onClick={() => setChat((prev) => !prev)}
-            className="bg-teal-200 p-2 rounded text-lg w-[100px] mb-6"
-          >
-            Chat
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setChat((prev) => !prev)}
+              className="bg-teal-200 p-2 rounded text-lg w-[100px] mb-6"
+            >
+              Chat
+            </button>
+            <button
+              onClick={endSession}
+              className="bg-purple-200 p-2 rounded text-lg w-[140px] mb-6"
+            >
+              End Session
+            </button>
+          </div>
           <div className="flex flex-col">
             <p className="text-md text-white mb-2">{transcript}</p>
             <div className="flex flex-row">
@@ -515,6 +636,11 @@ const ChatBot = () => {
                 Start
               </button>
 
+              {facialEmotion && (
+                <span className="bg-indigo-100 text-indigo-700 px-3 py-1 rounded-full text-sm ml-4">
+                  Detected: {facialEmotion}
+                </span>
+              )}
               <Webcam
                 ref={imgRef}
                 audio={false}
@@ -589,6 +715,51 @@ const ChatBot = () => {
         </div>
         <Loader dataInterpolation={(p) => `Loading... please wait`} />
       </div>
+
+      {moodJourney && (
+        <div className="fixed inset-0 bg-black/50 z-[2000] flex items-center justify-center">
+          <div className="bg-white rounded-xl p-6 max-w-lg w-full mx-4 max-h-[80vh] overflow-y-auto">
+            <h2 className="text-2xl font-bold text-purple-700 mb-4">Your Mood Journey</h2>
+            {sessionSummary && (
+              <p className="text-gray-700 mb-4 italic">{sessionSummary}</p>
+            )}
+            <div className="space-y-2">
+              {moodJourney.map((point, i) => {
+                const colors = {
+                  Happy: "bg-green-200 text-green-800",
+                  Sad: "bg-blue-200 text-blue-800",
+                  Anxious: "bg-yellow-200 text-yellow-800",
+                  Angry: "bg-red-200 text-red-800",
+                  Neutral: "bg-gray-200 text-gray-800",
+                };
+                return (
+                  <div key={i} className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center text-sm font-bold text-purple-600">
+                      {i + 1}
+                    </div>
+                    <span className={`px-3 py-1 rounded-full text-sm ${colors[point.emotion_category] || "bg-gray-100"}`}>
+                      {point.emotion_category}
+                    </span>
+                    <div className="flex-1 bg-gray-100 rounded-full h-3">
+                      <div
+                        className="bg-purple-500 h-3 rounded-full transition-all"
+                        style={{ width: `${(point.emotion_intensity / 10) * 100}%` }}
+                      />
+                    </div>
+                    <span className="text-sm text-gray-500">{point.emotion_intensity}/10</span>
+                  </div>
+                );
+              })}
+            </div>
+            <button
+              onClick={() => { setMoodJourney(null); setSessionSummary(null); }}
+              className="mt-6 w-full bg-purple-500 text-white py-2 rounded-lg hover:bg-purple-600 transition"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -1,17 +1,9 @@
-// src/utils/diagnosePatient.js
-const { GoogleGenerativeAI } = require("@google/generative-ai");
+const { chatCompletion } = require("./mistral");
 const { MongoClient } = require("mongodb");
 require("dotenv").config();
 
-// Instantiate the Google Generative AI client using your API key from .env
-const genAI = new GoogleGenerativeAI("AIzaSyD02kJ3dqI2k0v9hLbEfH-l0igviqq-S04");
 const mongoUrl = process.env.MONGODB_URL;
 
-/**
- * Analyze a patient's description and assign one diagnosis category.
-
- * @returns {Promise<string|null>} - The diagnosis category, or null on error.
- */
 async function DiagnosePatient() {
   const categories = [
     "Depression",
@@ -26,30 +18,27 @@ async function DiagnosePatient() {
     "Substance Abuse",
   ];
 
-  // Construct a strict classification prompt
-  const enhanced = `
-Analyze the following patient description and choose exactly one diagnosis category from this list:
-${categories.map((c) => `- ${c}`).join("\n")}
-
-
-
-Respond with ONLY the exact category name (no additional text).
-`;
+  const messages = [
+    {
+      role: "system",
+      content: `You are a mental health diagnostic classifier. Choose exactly one diagnosis category from this list:\n${categories.map((c) => `- ${c}`).join("\n")}\n\nRespond with ONLY the exact category name (no additional text).`,
+    },
+    {
+      role: "user",
+      content: "Analyze the patient's recent emotional logs and conversation history to determine the most likely diagnosis.",
+    },
+  ];
 
   let diagnosis = null;
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
-    const result = await model.generateContent(enhanced);
-    const raw = await result.response.text();
+    const raw = await chatCompletion(messages, { temperature: 0.3, maxTokens: 50 });
     const candidate = raw.trim();
 
-    // Validate the response
     if (!categories.includes(candidate)) {
       throw new Error(`Received invalid category: ${candidate}`);
     }
     diagnosis = candidate;
 
-    // Log to MongoDB
     const entry = { diagnosis, timestamp: new Date().toISOString() };
     const client = await MongoClient.connect(mongoUrl, {
       useNewUrlParser: true,
