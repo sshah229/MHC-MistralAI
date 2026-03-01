@@ -15,6 +15,8 @@ const sessionRoute = require("./session.route");
 const voiceRoute = require("./voice.route");
 const breathingRoute = require("./breathing.route");
 const weeklyReportRoute = require("./weeklyReport.route");
+const helpRoute = require("./help.route");
+const promptRoute = require("./prompt.route");
 
 const defaultRoutes = [
   {
@@ -64,6 +66,8 @@ router.use("", sessionRoute);
 router.use("", voiceRoute);
 router.use("", breathingRoute);
 router.use("", weeklyReportRoute);
+router.use("", helpRoute);
+router.use("", promptRoute);
 
 defaultRoutes.forEach((route) => {
   router.use(route.path, route.route);

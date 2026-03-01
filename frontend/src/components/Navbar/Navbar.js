@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { FiHome, FiActivity, FiWind } from "react-icons/fi";
 import { SiPlanet } from "react-icons/si";
@@ -8,6 +8,7 @@ import { MdOutlineFoodBank } from "react-icons/md";
 import { BsFillChatLeftTextFill, BsJournalText } from "react-icons/bs";
 import { HiSparkles } from "react-icons/hi";
 import { ToastContainer, toast } from "react-toastify";
+import axios from "axios";
 import "react-toastify/dist/ReactToastify.css";
 import logo from "../../assets/logo.png";
 
@@ -131,8 +132,17 @@ const Navbar = () => {
     navigate("/login");
   };
 
-  const handleEmergency = () => {
-    toast.error("Hold Tight! Help Being Sent", {
+  const handleEmergency = async () => {
+    const email = JSON.parse(localStorage.getItem("data") || "{}")?.email;
+    if (!email) {
+      toast.error("No logged-in user found for emergency alert.", {
+        position: "top-right",
+        autoClose: 5000,
+      });
+      return;
+    }
+
+    toast.error("Hold tight! Calling emergency contact...", {
       position: "top-right",
       autoClose: 5000,
       hideProgressBar: false,
@@ -140,7 +150,23 @@ const Navbar = () => {
       pauseOnHover: true,
       draggable: true,
     });
-    // Additional emergency logic can go here
+
+    try {
+      const { data } = await axios.post("http://localhost:3000/emergency", {
+        email,
+        message: "User triggered emergency assistance from Sakhi.",
+      });
+      toast.success(`Emergency call queued: ${data.callSid}`, {
+        position: "top-right",
+        autoClose: 6000,
+      });
+    } catch (err) {
+      const msg = err?.response?.data?.error || "Emergency alert failed.";
+      toast.error(msg, {
+        position: "top-right",
+        autoClose: 6000,
+      });
+    }
   };
 
   return (
@@ -162,8 +188,9 @@ const Navbar = () => {
             <Link
               to={nav.path}
               key={nav.id}
-              onClick={() => {
+              onClick={(e) => {
                 if (nav.name === "Emergency Call") {
+                  e.preventDefault();
                   handleEmergency();
                 }
               }}
