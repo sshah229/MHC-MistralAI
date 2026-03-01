@@ -1,59 +1,71 @@
-from flask import Flask, render_template, request
-from keras.models import load_model
-from PIL import Image
+from flask import Flask, request, jsonify
+from flask_cors import CORS
+import cv2
+import numpy as np
+from fer.fer import FER
 
 app = Flask(__name__)
+CORS(app)
 
-model = load_model("trained_vggface.h5")
-
-def predict_result(frame):
-    with open(frame_img, "rb") as image:
-        f = image.read()
-        b = bytearray(f)
-
-    results = detector.detect_faces(b)
-	# extract the bounding box from the first face
-    if len(results) == 1: #len(results)==1 if there is a face detected. len ==0 if no face is detected
-        try:
-            x1, y1, width, height = results[0]['box']
-            x2, y2 = x1 + width, y1 + height
-        	# extract the face
-            face = frame[y1:y2, x1:x2]
-            #Draw a rectangle around the face
-            cv2.rectangle(frame, (x1, y1), (x1+width, y1+height), (255, 0, 0), 2)
-            # resize pixels to the model size
-            cropped_img = cv2.resize(face, (96,96)) 
-            cropped_img_expanded = np.expand_dims(cropped_img, axis=0)
-            cropped_img_float = cropped_img_expanded.astype(float)
-            pred = model.predict(cropped_img_float)
-            return pred
-        except:
-            pass
+detector = FER(mtcnn=True)
 
 
+def map_to_sakhi_signal(emotions):
+    if not emotions:
+        return {"facialEmotion": "neutral", "stressLevel": "low", "confidence": 0.0}
 
-@app.route('/prediction', methods=["POST"])
-def call_predict_result():
-    print("hii")
-    #print(request.method)
-    try:
-        if request.method == 'POST':
-           # return "hi"
-            #return "yo"
-            res = predict_result(img)
-            print(res)
-            return res
-            
-        else:
-            return "bye"
-    except:
-        return []
+    top_emotion, confidence = max(emotions.items(), key=lambda x: x[1])
+    stress_map = {
+        "angry": "high",
+        "fear": "high",
+        "sad": "medium",
+        "disgust": "medium",
+        "surprise": "medium",
+        "neutral": "low",
+        "happy": "low",
+    }
 
-@app.route('/hello')
-def test_hello():
-    return '<h1>Hello!</h1>'
+    return {
+        "facialEmotion": top_emotion,
+        "stressLevel": stress_map.get(top_emotion, "low"),
+        "confidence": round(float(confidence), 3),
+    }
+
+
+@app.get("/health")
+def health():
+    return jsonify({"ok": True})
+
+
+@app.post("/analyze")
+def analyze_frame():
+    if "frame" not in request.files:
+        return jsonify({"error": "No frame provided"}), 400
+
+    file = request.files["frame"]
+    data = np.frombuffer(file.read(), np.uint8)
+    frame = cv2.imdecode(data, cv2.IMREAD_COLOR)
+
+    if frame is None:
+        return jsonify({"error": "Invalid image"}), 400
+
+    results = detector.detect_emotions(frame)
+    if not results:
+        return jsonify(
+            {
+                "faceDetected": False,
+                "facialEmotion": "neutral",
+                "stressLevel": "low",
+                "confidence": 0.0,
+                "rawEmotions": {},
+            }
+        )
+
+    emotions = results[0].get("emotions", {})
+    mapped = map_to_sakhi_signal(emotions)
+    return jsonify({"faceDetected": True, "rawEmotions": emotions, **mapped})
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(host="0.0.0.0", port=5001, debug=True)
 

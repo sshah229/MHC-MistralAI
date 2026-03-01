@@ -30,6 +30,7 @@ import * as faceapi from "face-api.js";
 const _ = require("lodash");
 
 const host = "http://localhost:3000/";
+const FACIAL_SENTIMENT_API = "http://localhost:5001/analyze";
 function Avatar({
   avatar_url,
   speak,
@@ -200,7 +201,12 @@ function Avatar({
 
     makeSpeech(text)
       .then((response) => {
-        let { blendData, filename } = response.data;
+        const payload = response?.data || {};
+        const blendData = Array.isArray(payload.blendData) ? payload.blendData : [];
+        let { filename } = payload;
+        if (!filename) {
+          throw new Error("TTS response missing filename");
+        }
         console.log(response.data);
         let newClips = [
           createAnimation(blendData, morphTargetDictionaryBody, "HG_Body"),
@@ -285,12 +291,25 @@ function Avatar({
 }
 
 async function makeSpeech(text) {
+  const hasValidFilename = (payload) =>
+    payload && typeof payload.filename === "string" && payload.filename.trim().length > 0;
+
   try {
     const elevenLabsRes = await axios.post(host + "voice/speak", { text });
-    return { data: { blendData: [], filename: elevenLabsRes.data.filename } };
-  } catch {
-    return axios.post(host + "talk", { text });
+    if (hasValidFilename(elevenLabsRes?.data)) {
+      return { data: { blendData: [], filename: elevenLabsRes.data.filename } };
+    }
+    throw new Error("ElevenLabs returned no filename");
+  } catch (elevenErr) {
+    console.warn("ElevenLabs failed, trying /talk fallback:", elevenErr?.message);
   }
+
+  const fallbackRes = await axios.post(host + "talk", { text });
+  if (hasValidFilename(fallbackRes?.data)) {
+    return fallbackRes;
+  }
+
+  throw new Error("Both ElevenLabs and /talk fallback failed to produce audio");
 }
 
 const STYLES = {
@@ -419,21 +438,54 @@ const ChatBot = () => {
   }, []);
 
   useEffect(() => {
-    if (!faceModelsLoaded || !imgRef.current) return;
+    if (!imgRef.current) return;
+
+    const detectEmotionFromPythonService = async () => {
+      const screenshot = imgRef.current?.getScreenshot?.();
+      if (!screenshot) return null;
+
+      const blob = await fetch(screenshot).then((res) => res.blob());
+      const formData = new FormData();
+      formData.append("frame", blob, "frame.jpg");
+
+      const { data } = await axios.post(FACIAL_SENTIMENT_API, formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+        timeout: 2200,
+      });
+
+      if (data?.faceDetected && data?.facialEmotion) {
+        return String(data.facialEmotion).toLowerCase();
+      }
+      return null;
+    };
+
     faceIntervalRef.current = setInterval(async () => {
       try {
-        const video = imgRef.current?.video;
-        if (!video || video.readyState < 2) return;
-        const detections = await faceapi
-          .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions())
-          .withFaceExpressions();
-        if (detections?.expressions) {
-          const sorted = Object.entries(detections.expressions).sort((a, b) => b[1] - a[1]);
-          const topEmotion = sorted[0][0];
+        let topEmotion = null;
+
+        try {
+          topEmotion = await detectEmotionFromPythonService();
+        } catch {}
+
+        if (!topEmotion && faceModelsLoaded) {
+          const video = imgRef.current?.video;
+          if (video && video.readyState >= 2) {
+            const detections = await faceapi
+              .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions())
+              .withFaceExpressions();
+            if (detections?.expressions) {
+              const sorted = Object.entries(detections.expressions).sort((a, b) => b[1] - a[1]);
+              topEmotion = sorted[0][0];
+            }
+          }
+        }
+
+        if (topEmotion) {
           setFacialEmotion(topEmotion);
         }
       } catch {}
     }, 3000);
+
     return () => {
       if (faceIntervalRef.current) clearInterval(faceIntervalRef.current);
     };
