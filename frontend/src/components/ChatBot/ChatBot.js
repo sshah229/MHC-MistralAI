@@ -55,7 +55,7 @@ function Avatar({
   avatar_url,
   speak,
   setSpeak,
-  text,
+  audioPayload,
   setAudioSource,
   playing,
 }) {
@@ -217,36 +217,15 @@ function Avatar({
   const mixer = useMemo(() => new THREE.AnimationMixer(gltf.scene), []);
 
   useEffect(() => {
-    if (speak === false) return;
-
-    makeSpeech(text)
-      .then((response) => {
-        const payload = response?.data || {};
-        const blendData = Array.isArray(payload.blendData) ? payload.blendData : [];
-        let { filename } = payload;
-        if (!filename) {
-          throw new Error("TTS response missing filename");
-        }
-        console.log(response.data);
-        let newClips = [
-          createAnimation(blendData, morphTargetDictionaryBody, "HG_Body"),
-          createAnimation(
-            blendData,
-            morphTargetDictionaryLowerTeeth,
-            "HG_TeethLower"
-          ),
-        ].filter(Boolean);
-
-        filename = host + filename;
-        console.log(filename);
-        setClips(newClips);
-        setAudioSource(filename);
-      })
-      .catch((err) => {
-        console.error(err);
-        setSpeak(false);
-      });
-  }, [speak]);
+    if (!speak || !audioPayload?.filename) return;
+    const blendData = Array.isArray(audioPayload.blendData) ? audioPayload.blendData : [];
+    const newClips = [
+      createAnimation(blendData, morphTargetDictionaryBody, "HG_Body"),
+      createAnimation(blendData, morphTargetDictionaryLowerTeeth, "HG_TeethLower"),
+    ].filter(Boolean);
+    setClips(newClips);
+    setAudioSource(host + audioPayload.filename);
+  }, [audioPayload]);
 
   let idleFbx = useFBX("/idle.fbx");
   let { clips: idleClips } = useAnimations(idleFbx.animations);
@@ -381,6 +360,8 @@ const ChatBot = () => {
   const [chat, setChat] = useState(false);
   const [audioSource, setAudioSource] = useState(null);
   const [playing, setPlaying] = useState(false);
+  const [audioPayload, setAudioPayload] = useState(null);
+  const audioQueueRef = useRef([]);
   const [inputText, setInputText] = useState("");
   const [language, setLanguage] = useState("");
   const [sessionId, setSessionId] = useState(null);
@@ -400,8 +381,16 @@ const ChatBot = () => {
   // End of play
   function playerEnded(e) {
     setAudioSource(null);
-    setSpeak(false);
     setPlaying(false);
+
+    if (audioQueueRef.current.length > 0) {
+      const next = audioQueueRef.current.shift();
+      setAudioPayload({ ...next });
+      return;
+    }
+
+    setSpeak(false);
+    setAudioPayload(null);
     if (handsFree) {
       setVoiceUiState("listening");
       if (autoRestartTimerRef.current) clearTimeout(autoRestartTimerRef.current);
@@ -700,41 +689,120 @@ const ChatBot = () => {
           { role: "Guardian", msg: SAFETY_AUTO_CALL_RESPONSE, agent: "guardian" },
         ]);
         setInputText("");
-        setSpeak(true);
+        try {
+          const ttsResult = await makeSpeech(SAFETY_AUTO_CALL_RESPONSE);
+          audioQueueRef.current = [];
+          setAudioPayload(ttsResult.data);
+          setSpeak(true);
+        } catch { setSpeak(false); }
         return;
       }
 
-      const { data } = await axios.post("http://localhost:3000/chatbot", {
-        message: "Answer this as a mental health companion, a friend and you will support me no matter what " +
-          message,
-        email,
-        language: language || undefined,
-        sessionId: sessionId || undefined,
-        facialEmotion: facialEmotion || undefined,
-      });
-      const { answer, sentiment, agent, agentName, action } = data;
-      setText(answer);
-      setChats(prev => [
-        ...prev,
-        { role: "User", msg: message },
-        { role: agentName || "Companion", msg: answer, agent },
-      ]);
+      setChats((prev) => [...prev, { role: "User", msg: message }]);
       setInputText("");
-      setSpeak(true);
 
-      if (action === "breathing_exercise") {
+      const response = await fetch(host + "chatbot/stream", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message:
+            "Answer this as a mental health companion, a friend and you will support me no matter what " +
+            message,
+          email,
+          language: language || undefined,
+          sessionId: sessionId || undefined,
+          facialEmotion: facialEmotion || undefined,
+        }),
+      });
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let fullText = "";
+      let sentenceBuffer = "";
+      let firstSentenceFired = false;
+      let meta = null;
+      const ttsPromises = [];
+      let currentEventType = null;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop();
+
+        for (const line of lines) {
+          if (line.startsWith("event: ")) {
+            currentEventType = line.slice(7).trim();
+          } else if (line.startsWith("data: ") && currentEventType) {
+            try {
+              const data = JSON.parse(line.slice(6));
+              if (currentEventType === "chunk" && data.text) {
+                fullText += data.text;
+                sentenceBuffer += data.text;
+
+                setChats((prev) => {
+                  const updated = [...prev];
+                  const last = updated[updated.length - 1];
+                  if (last && last.streaming) {
+                    return [...updated.slice(0, -1), { ...last, msg: fullText }];
+                  }
+                  return [...updated, { role: "Companion", msg: fullText, streaming: true }];
+                });
+
+                if (!firstSentenceFired && /[.!?]\s*$/.test(sentenceBuffer)) {
+                  firstSentenceFired = true;
+                  const sentence = sentenceBuffer.trim();
+                  sentenceBuffer = "";
+                  ttsPromises.push(makeSpeech(sentence).then((r) => r.data).catch(() => null));
+                }
+              } else if (currentEventType === "meta") {
+                meta = data;
+              }
+            } catch {}
+            currentEventType = null;
+          }
+        }
+      }
+
+      if (sentenceBuffer.trim()) {
+        ttsPromises.push(makeSpeech(sentenceBuffer.trim()).then((r) => r.data).catch(() => null));
+      } else if (!firstSentenceFired && fullText.trim()) {
+        ttsPromises.push(makeSpeech(fullText.trim()).then((r) => r.data).catch(() => null));
+      }
+
+      const ttsResults = (await Promise.all(ttsPromises)).filter(Boolean);
+
+      const agentName = meta?.agentName || "Companion";
+      setChats((prev) => {
+        const updated = [...prev];
+        const last = updated[updated.length - 1];
+        if (last && last.streaming) {
+          return [
+            ...updated.slice(0, -1),
+            { role: agentName, msg: fullText, agent: meta?.agent },
+          ];
+        }
+        return updated;
+      });
+      setText(fullText);
+
+      if (ttsResults.length > 0) {
+        audioQueueRef.current = ttsResults.slice(1);
+        setAudioPayload(ttsResults[0]);
+        setSpeak(true);
+      }
+
+      if (meta?.action === "breathing_exercise") {
         setTimeout(() => navigate("/breathing"), 3000);
       }
 
-      const key = sentiment?.toLowerCase();
+      const key = meta?.sentiment?.toLowerCase();
       const chosen = goalMap[key];
-      console.log("Auto‑add check:", { sentiment, key, chosen, email });
       if (chosen && email) {
-        await axios.post("http://localhost:3000/goals/create", {
-          email,
-          ...chosen,
-        });
-        console.log(`Auto‑added goal for ${sentiment}:`, chosen.label);
+        axios.post("http://localhost:3000/goals/create", { email, ...chosen }).catch(() => {});
       }
     } catch (err) {
       console.error("getResponse error:", err);
@@ -967,7 +1035,7 @@ const ChatBot = () => {
                 avatar_url="/model.glb"
                 speak={speak}
                 setSpeak={setSpeak}
-                text={text}
+                audioPayload={audioPayload}
                 setAudioSource={setAudioSource}
                 playing={playing}
               />

@@ -13,4 +13,17 @@ async function chatCompletion(messages, options = {}) {
   return response.choices[0].message.content.trim();
 }
 
-module.exports = { client, chatCompletion };
+async function* chatCompletionStream(messages, options = {}) {
+  const stream = await client.chat.stream({
+    model: options.model || "mistral-large-latest",
+    messages,
+    temperature: options.temperature ?? 0.7,
+    maxTokens: options.maxTokens ?? 300,
+  });
+  for await (const event of stream) {
+    const content = event.data?.choices?.[0]?.delta?.content;
+    if (content) yield content;
+  }
+}
+
+module.exports = { client, chatCompletion, chatCompletionStream };

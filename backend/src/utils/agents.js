@@ -1,4 +1,4 @@
-const { chatCompletion } = require("./mistral");
+const { chatCompletion, chatCompletionStream } = require("./mistral");
 const detectExtremeRisk = require("./open3");
 const AnalyzeEmotion = require("./open2");
 const Session = require("../models/session.model");
@@ -79,7 +79,10 @@ async function buildMoodContext(session) {
 }
 
 async function orchestrate(message, email, language, sessionId) {
-  const emotionEntry = await AnalyzeEmotion(message, email);
+  const [emotionEntry, crisisResult] = await Promise.all([
+    AnalyzeEmotion(message, email),
+    detectExtremeRisk(message, sessionId),
+  ]);
 
   let session = null;
   if (sessionId) {
@@ -106,7 +109,6 @@ async function orchestrate(message, email, language, sessionId) {
 
   const moodContext = await buildMoodContext(session);
 
-  const crisisResult = await detectExtremeRisk(message, sessionId);
   if (crisisResult.isRisk === 1) {
     const guardianMessages = [
       { role: "system", content: AGENT_PROMPTS.guardian.system + moodContext + (language ? ` Respond in ${language}.` : "") },
@@ -162,4 +164,100 @@ async function orchestrate(message, email, language, sessionId) {
   };
 }
 
-module.exports = { orchestrate, AGENT_PROMPTS };
+async function orchestrateStream(message, email, language, sessionId, onChunk) {
+  const [emotionEntry, crisisResult] = await Promise.all([
+    AnalyzeEmotion(message, email),
+    detectExtremeRisk(message, sessionId),
+  ]);
+
+  let session = null;
+  if (sessionId) {
+    session = await Session.findOne({ sessionId });
+    if (session) {
+      session.messages.push({
+        role: "user",
+        content: message,
+        emotion: emotionEntry
+          ? {
+              category: emotionEntry.emotion_category,
+              intensity: emotionEntry.emotion_intensity,
+              score: emotionEntry.sentiment_score,
+            }
+          : undefined,
+      });
+      if (emotionEntry) {
+        session.moodTimeline.push({
+          emotion_category: emotionEntry.emotion_category,
+          emotion_intensity: emotionEntry.emotion_intensity,
+          sentiment_score: emotionEntry.sentiment_score,
+        });
+      }
+    }
+  }
+
+  const moodContext = await buildMoodContext(session);
+
+  if (crisisResult.isRisk === 1) {
+    const guardianMessages = [
+      { role: "system", content: AGENT_PROMPTS.guardian.system + moodContext + (language ? ` Respond in ${language}.` : "") },
+      { role: "user", content: message },
+    ];
+    let fullText = "";
+    for await (const chunk of chatCompletionStream(guardianMessages, { maxTokens: 180 })) {
+      fullText += chunk;
+      onChunk(chunk);
+    }
+
+    if (session) {
+      session.messages.push({ role: "assistant", content: fullText, agent: "guardian" });
+      await session.save();
+    }
+
+    return {
+      answer: fullText,
+      agent: "guardian",
+      agentName: AGENT_PROMPTS.guardian.name,
+      sentiment: emotionEntry?.emotion_category?.toLowerCase() || "neutral",
+      emotionEntry,
+      action: "breathing_exercise",
+    };
+  }
+
+  const selectedAgent = await selectAgent(message, emotionEntry);
+  const agentConfig = AGENT_PROMPTS[selectedAgent];
+
+  const contextMessages = [];
+  if (session && session.messages.length > 1) {
+    const recentHistory = session.messages.slice(-6, -1);
+    recentHistory.forEach((m) => {
+      contextMessages.push({ role: m.role, content: m.content });
+    });
+  }
+
+  const agentMessages = [
+    { role: "system", content: agentConfig.system + moodContext + (language ? ` Respond in ${language}.` : "") },
+    ...contextMessages,
+    { role: "user", content: message },
+  ];
+
+  let fullText = "";
+  for await (const chunk of chatCompletionStream(agentMessages, { temperature: 0.8, maxTokens: 180 })) {
+    fullText += chunk;
+    onChunk(chunk);
+  }
+
+  if (session) {
+    session.messages.push({ role: "assistant", content: fullText, agent: selectedAgent });
+    await session.save();
+  }
+
+  return {
+    answer: fullText,
+    agent: selectedAgent,
+    agentName: agentConfig.name,
+    sentiment: emotionEntry?.emotion_category?.toLowerCase() || "neutral",
+    emotionEntry,
+  };
+}
+
+module.exports = { orchestrate, orchestrateStream, AGENT_PROMPTS };
