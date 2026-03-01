@@ -75,19 +75,21 @@ Respond STRICTLY as JSON:
 
     if (shouldEscalate) {
       try {
-        const accountSid = "ACb742010e2bc7d223a4d4dae884cf3c31";
-        const authToken = "005e309e53548504b8d923229963ddaa";
+        const accountSid = process.env.TWILIO_ACCOUNT_SID;
+        const authToken = process.env.TWILIO_AUTH_TOKEN;
+        const fromNumber = process.env.TWILIO_FROM_NUMBER;
+        if (!accountSid || !authToken || !fromNumber) throw new Error("Twilio not configured");
         const twilioClient = require("twilio")(accountSid, authToken);
 
         twilioClient.calls.create({
           url: "http://demo.twilio.com/docs/voice.xml",
           to: "+16025743772",
-          from: "+18885520964",
+          from: fromNumber,
         });
         twilioClient.calls.create({
           url: "http://demo.twilio.com/docs/voice.xml",
           to: "+16023189382",
-          from: "+18885520964",
+          from: fromNumber,
         });
         console.log("Emergency call triggered for", parsed.risk_level, "confidence:", parsed.confidence);
       } catch (twilioErr) {

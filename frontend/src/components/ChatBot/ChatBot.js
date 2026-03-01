@@ -140,10 +140,7 @@ function Avatar({
 
         node.material = new MeshPhysicalMaterial();
         node.material.map = bodyTexture;
-        // node.material.shininess = 60;
         node.material.roughness = 1.7;
-
-        // node.material.specularMap = bodySpecularTexture;
         node.material.roughnessMap = bodyRoughnessTexture;
         node.material.normalMap = bodyNormalTexture;
         node.material.normalScale = new Vector2(0.6, 0.6);
@@ -151,13 +148,11 @@ function Avatar({
         morphTargetDictionaryBody = node.morphTargetDictionary;
 
         node.material.envMapIntensity = 0.8;
-        // node.material.visible = false;
       }
 
       if (node?.name.includes("Eyes")) {
         node.material = new MeshStandardMaterial();
         node.material.map = eyesTexture;
-        // node.material.shininess = 100;
         node.material.roughness = 0.1;
         node.material.envMapIntensity = 0.5;
       }
@@ -177,7 +172,6 @@ function Avatar({
         node.material.roughness = 0.1;
         node.material.map = teethTexture;
         node.material.normalMap = teethNormalTexture;
-
         node.material.envMapIntensity = 0.7;
       }
 
