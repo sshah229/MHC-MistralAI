@@ -31,7 +31,7 @@ const Diet = () => {
     
     // Title: ends with colon
     if (cleanText.endsWith(":")) {
-      return "font-bold text-teal-800";
+      return "font-bold text-slate-200";
     }
     
     // Subtitle: lines that look like headers or emphasis
@@ -42,31 +42,31 @@ const Diet = () => {
       cleanText.match(/^\d+\.\s/) || // Numbered items
       cleanText.match(/^(Breakfast|Lunch|Dinner|Snack|Morning|Afternoon|Evening)/) // Meal times
     ) {
-      return "font-semibold text-teal-700";
+      return "font-semibold text-slate-300";
     }
     
     // Regular text
-    return "text-gray-700";
+    return "text-slate-400";
   };
 
   return (
-    <div className="flex flex-row w-full">
+    <div className="min-h-screen bg-slate-950 text-white">
       <Navbar />
       <div className="w-full">
-        <div className="p-6 bg-teal-100 shadow-lg">
+        <div className="p-6 bg-slate-900/80 border-b border-white/10">
           <button
             onClick={() => (window.history.length > 1 ? navigate(-1) : navigate("/assessments"))}
-            className="flex items-center gap-2 text-teal-700 hover:text-teal-900 mb-3 transition-colors"
+            className="flex items-center gap-2 text-slate-300 hover:text-slate-100 mb-3 transition-colors"
           >
             <FiArrowLeft size={18} />
             <span className="text-sm font-medium">Back</span>
           </button>
-          <h1 className="ml-1 text-3xl font-semibold text-teal-800">
+          <h1 className="ml-1 text-3xl font-semibold text-slate-200">
             Your Personalized Diet Plan
           </h1>
         </div>
 
-        <div className="p-6 bg-gradient-to-br from-teal-50 to-green-100">
+        <div className="p-6 bg-slate-900/50">
           <div className="mb-6">
             {!diet?.success ? (
               <button
@@ -85,10 +85,10 @@ const Diet = () => {
             )}
           </div>
 
-          <div className="bg-white p-6 rounded-lg shadow-lg border-l-8 border-teal-500">
+          <div className="bg-slate-900/80 border border-white/10 rounded-2xl p-6 border-l-8 border-l-teal-500">
             {!diet?.success ? (
               <div className="text-center">
-                <h2 className="text-2xl font-semibold text-red-600">No diet found, please take a test</h2>
+                <h2 className="text-2xl font-semibold text-red-400">No diet found, please take a test</h2>
               </div>
             ) : (
               <div className="diet-content space-y-2">

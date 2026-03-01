@@ -139,7 +139,7 @@ function SearchDocs() {
     }
   };
 
-  if (!diagnosis) return <p>Loading recommendation…</p>;
+  if (!diagnosis) return <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center"><p className="text-slate-300">Loading recommendation…</p></div>;
   const columns = [
     "Name",
     "Specialties",
@@ -151,20 +151,17 @@ function SearchDocs() {
   ];
 
   return (
-    <div className="flex">
+    <div className="min-h-screen bg-slate-950 text-white">
       <Navbar />
-      <div className="p-6 bg-sky-50 h-screen rounded-lg shadow-md ">
-        <h2
-          className="text-2xl font-semibold mb-4"
-          style={{ color: "#115E59" }}
-        >
-          Patient Diagnosis: <em>{diagnosis}</em>
+      <div className="p-6 bg-slate-900/50 min-h-screen rounded-lg">
+        <h2 className="text-2xl font-semibold mb-4 text-slate-200">
+          Patient Diagnosis: <em className="text-teal-400">{diagnosis}</em>
         </h2>
 
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
+          <table className="min-w-full divide-y divide-white/10">
             <thead>
-              <tr style={{ backgroundColor: "#115E59" }}>
+              <tr className="bg-teal-700/80">
                 {columns?.map((col) => (
                   <th
                     key={col}
@@ -178,18 +175,18 @@ function SearchDocs() {
                 </th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-slate-900/80 divide-y divide-white/10">
               {doctors?.map((doc, i) => (
-                <tr key={i} className="even:bg-teal-100">
+                <tr key={i} className="even:bg-slate-800/60">
                   {columns.map((col) => (
-                    <td key={col} className="px-4 py-2 text-sm text-gray-700">
+                    <td key={col} className="px-4 py-2 text-sm text-slate-300">
                       {doc[col]}
                     </td>
                   ))}
                   <td className="px-4 py-2">
                     <button
                       onClick={() => handleBookMeeting(doc)}
-                      className="px-4 py-2 bg-[#115E59] text-white text-sm font-medium rounded hover:bg-[#5A5A5A] transition"
+                      className="px-4 py-2 bg-teal-600 text-white text-sm font-medium rounded hover:bg-teal-500 transition"
                     >
                       Book Meet
                     </button>
@@ -201,7 +198,7 @@ function SearchDocs() {
         </div>
         <div
           ref={mapContainer}
-          className="w-full mt-4 h-96 mb-6 rounded-lg shadow-inner"
+          className="w-full mt-4 h-96 mb-6 rounded-lg border border-white/10"
         />
       </div>
     </div>

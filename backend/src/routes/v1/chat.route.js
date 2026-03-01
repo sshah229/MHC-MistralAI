@@ -5,12 +5,12 @@ const router = express.Router();
 
 router.post("/chatbot", async (req, res) => {
   try {
-    const { message, email, language, facialEmotion } = req.body;
+    const { message, email, language, facialEmotion, preferredAgent } = req.body;
     if (!message || !email) {
       return res.status(400).json({ error: "Missing message or email" });
     }
 
-    console.log("Chatbot request:", { email, message, language, facialEmotion });
+    console.log("Chatbot request:", { email, message, language, facialEmotion, preferredAgent });
 
     let enrichedMessage = message;
     if (facialEmotion) {
@@ -18,7 +18,7 @@ router.post("/chatbot", async (req, res) => {
     }
 
     const { sessionId } = req.body;
-    const result = await orchestrate(enrichedMessage, email, language, sessionId);
+    const result = await orchestrate(enrichedMessage, email, language, sessionId, preferredAgent || undefined);
 
     const key = result.sentiment;
     console.log("Agent:", result.agentName, "Sentiment:", key, "Answer:", result.answer);
@@ -47,7 +47,7 @@ router.post("/chatbot/stream", async (req, res) => {
   };
 
   try {
-    const { message, email, language, facialEmotion, sessionId } = req.body;
+    const { message, email, language, facialEmotion, sessionId, preferredAgent } = req.body;
     if (!message || !email) {
       send("error", { error: "Missing message or email" });
       return res.end();
@@ -63,7 +63,8 @@ router.post("/chatbot/stream", async (req, res) => {
       email,
       language,
       sessionId,
-      (chunk) => send("chunk", { text: chunk })
+      (chunk) => send("chunk", { text: chunk }),
+      preferredAgent || undefined
     );
 
     send("meta", {

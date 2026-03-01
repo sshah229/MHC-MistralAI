@@ -155,16 +155,16 @@ const Quiz = () => {
       });
   };
   return (
-    <div className="px-[16vw] bg-sky-400">
-      <div className="px-[7vw] py-12 bg-white">
-        <h1 className="text-6xl font-semibold">CBT</h1>
-        <h1 className="py-4 text-xl">
+    <div className="min-h-screen bg-slate-950 text-white">
+      <div className="px-[7vw] py-12 max-w-4xl mx-auto">
+        <h1 className="text-6xl font-semibold text-slate-200">CBT</h1>
+        <h1 className="py-4 text-xl text-slate-300">
           Answer the following questions based on how much were you bothered by
           these for the past week:
         </h1>
         {set.map((item, index) => (
           <div className="py-4" key={index}>
-            <h1 className="text-lg">
+            <h1 className="text-lg text-slate-300">
               {index + 1}. {item.question}
             </h1>
             <div className="flex flex-row gap-4 py-2">
@@ -181,8 +181,9 @@ const Quiz = () => {
                       )
                     }
                     name={item.question + choice}
+                    className="accent-teal-500"
                   />
-                  <label>{choice}</label>
+                  <label className="text-slate-400">{choice}</label>
                 </div>
               ))}
             </div>
@@ -191,13 +192,13 @@ const Quiz = () => {
         <div className="flex w-full gap-4">
           <button
             onClick={() => navigate("/home")}
-            className="col-span-3 bg-gradient-to-bl from-gray-600 to-gray-300 bg-[position:_0%_0%] hover:bg-[position:_100%_100%] bg-[size:_200%] transition-all duration-500 text-[#02203c] p-3 rounded-md"
+            className="col-span-3 bg-slate-700 hover:bg-slate-600 text-slate-200 p-3 rounded-md transition-all duration-300"
           >
             Cancel
           </button>
           <button
             onClick={() => submit()}
-            className="col-span-3 bg-gradient-to-bl from-sky-600 to-sky-300 bg-[position:_0%_0%] hover:bg-[position:_100%_100%] bg-[size:_200%] transition-all duration-500 text-[#02203c] p-3 rounded-md"
+            className="col-span-3 bg-teal-600 hover:bg-teal-500 text-white p-3 rounded-md transition-all duration-300"
           >
             Submit
           </button>

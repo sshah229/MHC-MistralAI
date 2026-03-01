@@ -49,7 +49,7 @@ async function AnalyzeEmotion(prompt, email) {
         {
           role: "system",
           content:
-            "You are a thoughtful mental health companion. Summarize the following conversation in 2-3 sentences, highlight feelings and offer gentle support.",
+            "You are a thoughtful mental health companion. Summarize the following conversation in 2-3 sentences, highlight feelings and offer gentle support. Never use emojis.",
         },
         {
           role: "user",

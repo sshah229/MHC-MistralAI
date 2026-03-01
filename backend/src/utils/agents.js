@@ -3,65 +3,61 @@ const detectExtremeRisk = require("./open3");
 const AnalyzeEmotion = require("./open2");
 const Session = require("../models/session.model");
 
+const SHARED_RULES = `
+STRICT RULES (follow every single time):
+- Never use emojis, ever.
+- Keep your response 2-4 sentences. Be concise, direct, and to the point.
+- Speak naturally like a real person talking to a friend, not like a chatbot.
+- Do not repeat yourself or pad your response with filler words.
+- If the user asks you to "switch" roles or talk to a different agent, let them know they can use the agent selector dropdown at the top right of the screen to choose between Sakhi, Sage, and Haven.
+- Stay in character as your assigned role at all times. Do not pretend to be a different agent.`;
+
 const AGENT_PROMPTS = {
-  listener: {
-    name: "The Listener",
-    system: `You are "The Listener", a deeply empathetic mental health companion. Your role:
-- Validate the user's feelings without judgment
-- Reflect back what you hear them saying
-- Never give unsolicited advice
-- Use warm, gentle language
-- Acknowledge their courage in sharing
-- Keep responses under 300 characters
-You never judge. You only listen and validate.`,
+  sakhi: {
+    name: "Sakhi",
+    system: `You are "Sakhi", a warm and caring companion. You are the user's trusted friend who listens without judgment. Your role:
+- Validate the user's feelings and reflect back what you hear them saying
+- Never give unsolicited advice unless asked
+- Use warm, gentle, natural language -- like a close friend would
+- Acknowledge their courage in opening up
+${SHARED_RULES}`,
   },
-  coach: {
-    name: "The Coach",
-    system: `You are "The Coach", a supportive CBT-based mental health guide. Your role:
-- Suggest practical coping strategies based on Cognitive Behavioral Therapy
-- Help reframe negative thought patterns
-- Offer actionable exercises (breathing, journaling, grounding)
-- Be encouraging and solution-oriented
-- Keep responses under 300 characters
-You help the user take constructive steps forward.`,
+  sage: {
+    name: "Sage",
+    system: `You are "Sage", a calm and wise guide. You help the user find clarity and take practical steps forward. Your role:
+- Suggest practical coping strategies grounded in Cognitive Behavioral Therapy
+- Help reframe negative thought patterns into healthier perspectives
+- Offer actionable exercises when appropriate (breathing, journaling, grounding)
+- Be encouraging and solution-oriented without being pushy
+${SHARED_RULES}`,
   },
-  guardian: {
-    name: "The Guardian",
-    system: `You are "The Guardian", a crisis-aware safety monitor. Your role:
-- Provide calm, reassuring responses during distress
-- Share crisis resources (988 Suicide & Crisis Lifeline, Crisis Text Line)
-- Encourage the user to reach out to trusted people
-- Never minimize their pain
-- Keep responses under 300 characters
-You protect and guide the user toward safety.`,
+  haven: {
+    name: "Haven",
+    system: `You are "Haven", a steady and protective presence. You are there for the user in their most difficult moments. Your role:
+- Provide calm, grounding reassurance during distress
+- Share crisis resources naturally (988 Suicide & Crisis Lifeline, Crisis Text Line: text HOME to 741741)
+- Gently encourage the user to reach out to someone they trust
+- Never minimize their pain or rush them
+${SHARED_RULES}`,
   },
 };
 
-async function selectAgent(message, emotionEntry) {
-  const messages = [
-    {
-      role: "system",
-      content: `You are a routing classifier. Based on the user message and their detected emotion, decide which agent should respond.
-Reply with exactly one word: LISTENER or COACH.
-- LISTENER: if the user is venting, expressing pain, sharing feelings, or needs validation
-- COACH: if the user is seeking advice, coping strategies, asking "what should I do", or looking for actionable help`,
-    },
-    {
-      role: "user",
-      content: `Message: "${message}"\nDetected emotion: ${emotionEntry?.emotion_category || "unknown"} (intensity: ${emotionEntry?.emotion_intensity || "unknown"})`,
-    },
-  ];
+const SAGE_KEYWORDS = /\b(what should i do|how do i|how can i|help me|advice|tips?|suggest|cope|strategy|steps?|plan|solution|fix|improve|manage|technique|exercise)\b/i;
+const SAKHI_EMOTIONS = new Set(["sad", "angry", "anxious"]);
 
-  try {
-    const result = await chatCompletion(messages, { temperature: 0, maxTokens: 10 });
-    const choice = result.toUpperCase().trim();
-    return choice === "COACH" ? "coach" : "listener";
-  } catch {
-    return "listener";
-  }
+function selectAgent(message, emotionEntry) {
+  if (SAGE_KEYWORDS.test(message)) return "sage";
+
+  const category = (emotionEntry?.emotion_category || "").toLowerCase();
+  const intensity = emotionEntry?.emotion_intensity || 0;
+
+  if (SAKHI_EMOTIONS.has(category) && intensity >= 6) return "sakhi";
+  if (intensity >= 7) return "sakhi";
+
+  return "sakhi";
 }
 
-async function buildMoodContext(session) {
+function buildMoodContext(session) {
   if (!session || session.moodTimeline.length === 0) return "";
   const recent = session.moodTimeline.slice(-5);
   const arc = recent.map((m) => `${m.emotion_category}(${m.emotion_intensity}/10)`).join(" -> ");
@@ -78,60 +74,59 @@ async function buildMoodContext(session) {
   return `\n[Emotional arc this session: ${arc}. ${trend}]`;
 }
 
-async function orchestrate(message, email, language, sessionId) {
-  const [emotionEntry, crisisResult] = await Promise.all([
+async function orchestrate(message, email, language, sessionId, preferredAgent) {
+  const [emotionEntry, session, crisisResult] = await Promise.all([
     AnalyzeEmotion(message, email),
+    sessionId ? Session.findOne({ sessionId }) : Promise.resolve(null),
     detectExtremeRisk(message, sessionId),
   ]);
 
-  let session = null;
-  if (sessionId) {
-    session = await Session.findOne({ sessionId });
-    if (session) {
-      session.messages.push({
-        role: "user",
-        content: message,
-        emotion: emotionEntry ? {
-          category: emotionEntry.emotion_category,
-          intensity: emotionEntry.emotion_intensity,
-          score: emotionEntry.sentiment_score,
-        } : undefined,
+  if (session) {
+    session.messages.push({
+      role: "user",
+      content: message,
+      emotion: emotionEntry ? {
+        category: emotionEntry.emotion_category,
+        intensity: emotionEntry.emotion_intensity,
+        score: emotionEntry.sentiment_score,
+      } : undefined,
+    });
+    if (emotionEntry) {
+      session.moodTimeline.push({
+        emotion_category: emotionEntry.emotion_category,
+        emotion_intensity: emotionEntry.emotion_intensity,
+        sentiment_score: emotionEntry.sentiment_score,
       });
-      if (emotionEntry) {
-        session.moodTimeline.push({
-          emotion_category: emotionEntry.emotion_category,
-          emotion_intensity: emotionEntry.emotion_intensity,
-          sentiment_score: emotionEntry.sentiment_score,
-        });
-      }
     }
   }
 
-  const moodContext = await buildMoodContext(session);
+  const moodContext = buildMoodContext(session);
 
   if (crisisResult.isRisk === 1) {
-    const guardianMessages = [
-      { role: "system", content: AGENT_PROMPTS.guardian.system + moodContext + (language ? ` Respond in ${language}.` : "") },
+    const havenMessages = [
+      { role: "system", content: AGENT_PROMPTS.haven.system + moodContext + (language ? ` Respond in ${language}.` : "") },
       { role: "user", content: message },
     ];
-    const answer = await chatCompletion(guardianMessages, { maxTokens: 180 });
+    const answer = await chatCompletion(havenMessages, { maxTokens: 180 });
 
     if (session) {
-      session.messages.push({ role: "assistant", content: answer, agent: "guardian" });
+      session.messages.push({ role: "assistant", content: answer, agent: "haven" });
       await session.save();
     }
 
     return {
       answer,
-      agent: "guardian",
-      agentName: AGENT_PROMPTS.guardian.name,
+      agent: "haven",
+      agentName: AGENT_PROMPTS.haven.name,
       sentiment: emotionEntry?.emotion_category?.toLowerCase() || "neutral",
       emotionEntry,
       action: "breathing_exercise",
     };
   }
 
-  const selectedAgent = await selectAgent(message, emotionEntry);
+  const selectedAgent = (preferredAgent && AGENT_PROMPTS[preferredAgent])
+    ? preferredAgent
+    : selectAgent(message, emotionEntry);
   const agentConfig = AGENT_PROMPTS[selectedAgent];
 
   const contextMessages = [];
@@ -164,7 +159,7 @@ async function orchestrate(message, email, language, sessionId) {
   };
 }
 
-async function orchestrateStream(message, email, language, sessionId, onChunk) {
+async function orchestrateStream(message, email, language, sessionId, onChunk, preferredAgent) {
   const [emotionEntry, crisisResult] = await Promise.all([
     AnalyzeEmotion(message, email),
     detectExtremeRisk(message, sessionId),
@@ -198,32 +193,34 @@ async function orchestrateStream(message, email, language, sessionId, onChunk) {
   const moodContext = await buildMoodContext(session);
 
   if (crisisResult.isRisk === 1) {
-    const guardianMessages = [
-      { role: "system", content: AGENT_PROMPTS.guardian.system + moodContext + (language ? ` Respond in ${language}.` : "") },
+    const havenMessages = [
+      { role: "system", content: AGENT_PROMPTS.haven.system + moodContext + (language ? ` Respond in ${language}.` : "") },
       { role: "user", content: message },
     ];
     let fullText = "";
-    for await (const chunk of chatCompletionStream(guardianMessages, { maxTokens: 180 })) {
+    for await (const chunk of chatCompletionStream(havenMessages, { maxTokens: 180 })) {
       fullText += chunk;
       onChunk(chunk);
     }
 
     if (session) {
-      session.messages.push({ role: "assistant", content: fullText, agent: "guardian" });
+      session.messages.push({ role: "assistant", content: fullText, agent: "haven" });
       await session.save();
     }
 
     return {
       answer: fullText,
-      agent: "guardian",
-      agentName: AGENT_PROMPTS.guardian.name,
+      agent: "haven",
+      agentName: AGENT_PROMPTS.haven.name,
       sentiment: emotionEntry?.emotion_category?.toLowerCase() || "neutral",
       emotionEntry,
       action: "breathing_exercise",
     };
   }
 
-  const selectedAgent = await selectAgent(message, emotionEntry);
+  const selectedAgent = (preferredAgent && AGENT_PROMPTS[preferredAgent])
+    ? preferredAgent
+    : selectAgent(message, emotionEntry);
   const agentConfig = AGENT_PROMPTS[selectedAgent];
 
   const contextMessages = [];

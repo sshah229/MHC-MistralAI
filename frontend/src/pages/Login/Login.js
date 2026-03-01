@@ -171,52 +171,51 @@ const Login = () => {
   };
 
   return (
-    <div className="w-full h-screen flex">
-      <div className="flex flex-col px-36 py-6 flex-grow max-w-[60vw]">
+    <div className="w-full h-screen flex bg-slate-950">
+      <div className="flex flex-col px-16 lg:px-36 py-6 flex-grow max-w-[60vw]">
         <div className="mt-32 max-w-[600px]">
-          <h1 className="text-5xl leading-tight font-semibold mt-4 text-transparent bg-clip-text bg-gradient-to-r to-sky-600 from-sky-400">
+          <h1 className="text-5xl leading-tight font-semibold mt-4 bg-gradient-to-r from-teal-400 to-cyan-300 bg-clip-text text-transparent">
             Sakhi
           </h1>
-          <h1 className="mt-4 text-2xl font-normal ">
+          <h1 className="mt-4 text-xl font-normal text-slate-400 leading-relaxed">
             Empowering your journey to mental well-being with a stigma-free 3D
             companion
           </h1>
         </div>
-        <img src={wallpaper} className="w-[450px]" alt="Login wallpaper" />
+        <img src={wallpaper} className="w-[400px] mt-6 opacity-80" alt="Login wallpaper" />
       </div>
-      <div className="flex justify-between flex-grow bg-[#02203c] text-sky-300">
-        <div className="p-8 w-full min-h-[300px] px-24 self-center">
-          <div className="flex flex-col justify-center gap-6">
-            <h1 className="text-3xl font-semibold">Login!</h1>
-            <p className="text-md font-medium">
-              Enter your creds to heal yourself!
+      <div className="flex justify-between flex-grow bg-slate-900 border-l border-white/5 text-slate-300">
+        <div className="p-8 w-full min-h-[300px] px-16 lg:px-24 self-center">
+          <div className="flex flex-col justify-center gap-5">
+            <h1 className="text-3xl font-semibold text-white">Welcome back</h1>
+            <p className="text-sm text-slate-400">
+              Sign in to continue your healing journey
             </p>
 
-            {/* Display error message if any */}
             {error && (
-              <div className="bg-red-900/30 text-red-300 p-3 rounded-md text-sm">
+              <div className="bg-red-500/10 border border-red-500/20 text-red-400 p-3 rounded-xl text-sm">
                 {error}
               </div>
             )}
 
-            <div className="bg-sky-900 shadow p-2 flex items-center rounded-md">
-              <MdEmail className="text-sky-500 mr-2" size={18} />
+            <div className="bg-slate-800 border border-white/5 p-2.5 flex items-center rounded-xl">
+              <MdEmail className="text-teal-400 mr-2" size={18} />
               <input
                 type="text"
                 placeholder="Enter your email"
-                className="p-1 w-full text-sm outline-none bg-inherit"
+                className="p-1 w-full text-sm outline-none bg-transparent text-slate-200 placeholder-slate-500"
                 value={data.email}
                 onChange={(e) => setData({ ...data, email: e.target.value })}
                 onKeyDown={handleKeyDown}
               />
             </div>
 
-            <div className="bg-sky-900 shadow p-2 flex items-center rounded-md">
-              <MdPassword className="text-sky-500 mr-2" size={18} />
+            <div className="bg-slate-800 border border-white/5 p-2.5 flex items-center rounded-xl">
+              <MdPassword className="text-teal-400 mr-2" size={18} />
               <input
                 type="password"
                 placeholder="Enter your password"
-                className="p-1 text-sm w-full outline-none bg-inherit"
+                className="p-1 text-sm w-full outline-none bg-transparent text-slate-200 placeholder-slate-500"
                 value={data.password}
                 onChange={(e) => setData({ ...data, password: e.target.value })}
                 onKeyDown={handleKeyDown}
@@ -226,16 +225,16 @@ const Login = () => {
             <button
               onClick={login}
               disabled={logging}
-              className={`bg-gradient-to-bl from-sky-600 to-sky-300 ${
+              className={`bg-gradient-to-r from-teal-500 to-cyan-500 ${
                 logging
                   ? "opacity-70 cursor-not-allowed"
-                  : "bg-[position:_0%_0%] hover:bg-[position:_100%_100%]"
-              } bg-[size:_200%] transition-all duration-500 text-[#02203c] p-3 rounded-md`}
+                  : "hover:shadow-lg hover:shadow-teal-500/20"
+              } transition-all duration-300 text-white font-medium p-3 rounded-xl`}
             >
               {logging ? "Logging in..." : "Login"}
             </button>
-            <Link to="/signup" className="text-sky-600 mt-4 font-medium">
-              Do not have an account? Sign Up
+            <Link to="/signup" className="text-teal-400 hover:text-teal-300 mt-2 text-sm font-medium transition-colors">
+              Don't have an account? Sign Up
             </Link>
           </div>
         </div>

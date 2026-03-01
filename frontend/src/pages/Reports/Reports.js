@@ -33,44 +33,41 @@ const Reports = () => {
   const getTextStyle = (text) => {
     const cleanText = text.trim();
 
-    // Title: ends with colon
     if (cleanText.endsWith(":")) {
-      return "font-bold text-teal-800";
+      return "font-bold text-teal-400";
     }
 
-    // Subtitle: lines that look like headers or emphasis
     if (
       cleanText.startsWith("Why") ||
       cleanText.includes("?") ||
-      (cleanText.match(/^[A-Z]/) && cleanText.length < 50) || // Capitalized short lines
-      cleanText.match(/^\d+\.\s/) || // Numbered items
-      cleanText.match(/^(Analysis|Overview|Recommendation|Summary|Conclusion|Finding)/) // Report sections
+      (cleanText.match(/^[A-Z]/) && cleanText.length < 50) ||
+      cleanText.match(/^\d+\.\s/) ||
+      cleanText.match(/^(Analysis|Overview|Recommendation|Summary|Conclusion|Finding)/)
     ) {
-      return "font-semibold text-teal-700";
+      return "font-semibold text-teal-300";
     }
 
-    // Regular text
-    return "text-gray-700";
+    return "text-slate-300";
   };
 
   return (
-    <div className="flex flex-row w-full">
+    <div className="min-h-screen bg-slate-950 text-white">
       <Navbar />
-      <div className="w-full">
-        <div className="p-6 bg-teal-100 shadow-lg">
+      <div className="flex-1 overflow-y-auto">
+        <div className="p-6 bg-teal-500/20 border-b border-teal-400/20">
           <button
             onClick={() => (window.history.length > 1 ? navigate(-1) : navigate("/assessments"))}
-            className="flex items-center gap-2 text-teal-700 hover:text-teal-900 mb-3 transition-colors"
+            className="flex items-center gap-2 text-teal-300 hover:text-white mb-3 transition-colors"
           >
             <FiArrowLeft size={18} />
             <span className="text-sm font-medium">Back</span>
           </button>
-          <h1 className="ml-1 text-3xl font-semibold text-teal-800">
+          <h1 className="ml-1 text-3xl font-semibold bg-gradient-to-r from-teal-400 to-cyan-300 bg-clip-text text-transparent">
             Your Health Report
           </h1>
         </div>
 
-        <div className="p-6 bg-gradient-to-br from-teal-50 to-green-100">
+        <div className="p-6">
           <div className="mb-6">
             {!report?.success ? (
               <button
@@ -89,17 +86,17 @@ const Reports = () => {
             )}
           </div>
 
-          <div className="bg-white p-6 rounded-lg shadow-lg border-l-8 border-teal-500">
+          <div className="bg-slate-900/80 p-6 rounded-2xl border border-white/10 border-l-4 border-l-teal-500">
             {!report?.success ? (
               <div className="text-center">
-                <h2 className="text-2xl font-semibold text-red-600">
+                <h2 className="text-2xl font-semibold text-red-400">
                   No report found, please take a test
                 </h2>
               </div>
             ) : (
               <div className="report-content space-y-2">
                 {report?.report?.split("\n").map((item, index) => {
-                  if (!item.trim()) return null; // Skip empty lines
+                  if (!item.trim()) return null;
 
                   const cleanedText = formatReportText(item);
                   const textStyle = getTextStyle(cleanedText);

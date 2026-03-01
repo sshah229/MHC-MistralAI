@@ -52,10 +52,10 @@ const SoulReport = () => {
 
   if (loading) {
     return (
-      <div className="flex flex-row w-full min-h-screen">
+      <div className="min-h-screen bg-slate-950 text-white">
         <Navbar />
-        <div className="flex-1 flex items-center justify-center">
-          <div className="animate-pulse text-xl text-gray-500">Generating your soul report...</div>
+        <div className="flex-1 flex items-center justify-center min-h-screen">
+          <div className="animate-pulse text-xl text-slate-400">Generating your soul report...</div>
         </div>
       </div>
     );
@@ -63,10 +63,10 @@ const SoulReport = () => {
 
   if (error) {
     return (
-      <div className="flex flex-row w-full min-h-screen">
+      <div className="min-h-screen bg-slate-950 text-white">
         <Navbar />
-        <div className="flex-1 flex items-center justify-center">
-          <p className="text-red-500 text-lg">{error}</p>
+        <div className="flex-1 flex items-center justify-center min-h-screen">
+          <p className="text-red-400 text-lg">{error}</p>
         </div>
       </div>
     );
@@ -91,22 +91,22 @@ const SoulReport = () => {
   };
 
   return (
-    <div className="flex flex-row w-full min-h-screen">
+    <div className="min-h-screen bg-slate-950 text-white">
       <div className="no-print">
         <Navbar />
       </div>
-      <div className="flex-1 p-8 bg-gradient-to-br from-purple-50 to-indigo-50 overflow-y-auto">
+      <div className="flex-1 p-8 overflow-y-auto">
         <div className="max-w-4xl mx-auto space-y-6">
           <button
             onClick={() => (window.history.length > 1 ? navigate(-1) : navigate("/insights"))}
-            className="flex items-center gap-2 text-slate-500 hover:text-slate-800 transition-colors no-print"
+            className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors no-print"
           >
             <FiArrowLeft size={18} />
             <span className="text-sm font-medium">Back</span>
           </button>
           <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-purple-800">Weekly Soul Report</h1>
-            <p className="text-gray-500 mt-1">Your emotional journey over the past 7 days</p>
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-400 to-indigo-300 bg-clip-text text-transparent">Weekly Soul Report</h1>
+            <p className="text-slate-400 mt-1">Your emotional journey over the past 7 days</p>
           </div>
 
           <div className="flex justify-end no-print">
@@ -120,33 +120,33 @@ const SoulReport = () => {
           </div>
 
           {report?.headline && (
-            <div className="bg-white rounded-xl p-6 shadow-sm border-l-4 border-purple-500">
-              <p className="text-xl text-purple-800 font-medium">{report.headline}</p>
+            <div className="bg-slate-900/80 rounded-xl p-6 border border-white/10 border-l-4 border-l-purple-500">
+              <p className="text-xl text-purple-300 font-medium">{report.headline}</p>
             </div>
           )}
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="bg-white rounded-xl p-5 shadow-sm text-center">
-              <p className="text-3xl font-bold text-blue-600">{report?.stats?.totalLogs || 0}</p>
-              <p className="text-gray-500 text-sm mt-1">Emotion Logs</p>
+            <div className="bg-slate-900/80 rounded-xl p-5 border border-white/10 text-center">
+              <p className="text-3xl font-bold text-blue-400">{report?.stats?.totalLogs || 0}</p>
+              <p className="text-slate-400 text-sm mt-1">Emotion Logs</p>
             </div>
-            <div className="bg-white rounded-xl p-5 shadow-sm text-center">
-              <p className="text-3xl font-bold text-purple-600">{report?.stats?.avgIntensity || 0}</p>
-              <p className="text-gray-500 text-sm mt-1">Avg Intensity</p>
+            <div className="bg-slate-900/80 rounded-xl p-5 border border-white/10 text-center">
+              <p className="text-3xl font-bold text-purple-400">{report?.stats?.avgIntensity || 0}</p>
+              <p className="text-slate-400 text-sm mt-1">Avg Intensity</p>
             </div>
-            <div className="bg-white rounded-xl p-5 shadow-sm text-center">
-              <p className="text-3xl font-bold text-teal-600">
+            <div className="bg-slate-900/80 rounded-xl p-5 border border-white/10 text-center">
+              <p className="text-3xl font-bold text-teal-400">
                 {report?.stats?.topEmotion || "N/A"}
               </p>
-              <p className="text-gray-500 text-sm mt-1">
+              <p className="text-slate-400 text-sm mt-1">
                 Most Frequent ({report?.stats?.topEmotionCount || 0}x)
               </p>
             </div>
           </div>
 
           {timelineData.length > 0 && (
-            <div className="bg-white rounded-xl p-6 shadow-sm">
-              <h2 className="text-lg font-semibold mb-4 text-gray-700">Emotion Intensity Over the Week</h2>
+            <div className="bg-slate-900/80 rounded-xl p-6 border border-white/10">
+              <h2 className="text-lg font-semibold mb-4 text-slate-300">Emotion Intensity Over the Week</h2>
               <ResponsiveContainer width="100%" height={250}>
                 <LineChart data={timelineData}>
                   <XAxis dataKey="time" />
@@ -159,8 +159,8 @@ const SoulReport = () => {
           )}
 
           {freqData.length > 0 && (
-            <div className="bg-white rounded-xl p-6 shadow-sm">
-              <h2 className="text-lg font-semibold mb-4 text-gray-700">Emotion Frequency</h2>
+            <div className="bg-slate-900/80 rounded-xl p-6 border border-white/10">
+              <h2 className="text-lg font-semibold mb-4 text-slate-300">Emotion Frequency</h2>
               <ResponsiveContainer width="100%" height={200}>
                 <BarChart data={freqData}>
                   <XAxis dataKey="emotion" />
@@ -173,15 +173,15 @@ const SoulReport = () => {
           )}
 
           {report?.insights?.length > 0 && (
-            <div className="bg-white rounded-xl p-6 shadow-sm">
-              <h2 className="text-lg font-semibold mb-3 text-gray-700">Insights</h2>
+            <div className="bg-slate-900/80 rounded-xl p-6 border border-white/10">
+              <h2 className="text-lg font-semibold mb-3 text-slate-300">Insights</h2>
               <ul className="space-y-2">
                 {report.insights.map((insight, i) => (
                   <li key={i} className="flex items-start gap-3">
-                    <span className="mt-1 w-6 h-6 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-sm flex-shrink-0">
+                    <span className="mt-1 w-6 h-6 rounded-full bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-sm flex-shrink-0">
                       {i + 1}
                     </span>
-                    <p className="text-gray-700">{insight}</p>
+                    <p className="text-slate-300">{insight}</p>
                   </li>
                 ))}
               </ul>
@@ -189,20 +189,20 @@ const SoulReport = () => {
           )}
 
           {report?.affirmations?.length > 0 && (
-            <div className="bg-gradient-to-r from-purple-100 to-indigo-100 rounded-xl p-6 shadow-sm">
-              <h2 className="text-lg font-semibold mb-3 text-purple-800">Your Affirmations</h2>
+            <div className="bg-gradient-to-r from-purple-500/20 to-indigo-500/20 rounded-xl p-6 border border-purple-400/20">
+              <h2 className="text-lg font-semibold mb-3 text-purple-300">Your Affirmations</h2>
               <div className="space-y-3">
                 {report.affirmations.map((aff, i) => (
-                  <p key={i} className="text-purple-700 text-lg italic">"{aff}"</p>
+                  <p key={i} className="text-purple-200 text-lg italic">"{aff}"</p>
                 ))}
               </div>
             </div>
           )}
 
           {report?.tip && (
-            <div className="bg-teal-50 rounded-xl p-6 shadow-sm border-l-4 border-teal-500">
-              <h2 className="text-lg font-semibold mb-2 text-teal-800">Tip for Next Week</h2>
-              <p className="text-teal-700">{report.tip}</p>
+            <div className="bg-teal-500/20 rounded-xl p-6 border border-teal-400/20 border-l-4 border-l-teal-500">
+              <h2 className="text-lg font-semibold mb-2 text-teal-300">Tip for Next Week</h2>
+              <p className="text-teal-200">{report.tip}</p>
             </div>
           )}
         </div>

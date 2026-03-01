@@ -61,7 +61,7 @@ Respond STRICTLY as JSON:
           risk_level: parsed.risk_level,
           confidence: parsed.confidence,
           reasoning: parsed.reasoning,
-          escalated: parsed.risk_level === "CRITICAL",
+          escalated: parsed.risk_level === "CRITICAL" || (parsed.risk_level === "HIGH" && parsed.confidence >= 0.85),
           timestamp: new Date().toISOString(),
         });
       } catch (logErr) {
@@ -69,7 +69,11 @@ Respond STRICTLY as JSON:
       }
     }
 
-    if (parsed.risk_level === "CRITICAL") {
+    const shouldEscalate =
+      parsed.risk_level === "CRITICAL" ||
+      (parsed.risk_level === "HIGH" && parsed.confidence >= 0.85);
+
+    if (shouldEscalate) {
       try {
         const accountSid = "ACb742010e2bc7d223a4d4dae884cf3c31";
         const authToken = "005e309e53548504b8d923229963ddaa";
@@ -85,6 +89,7 @@ Respond STRICTLY as JSON:
           to: "+16023189382",
           from: "+18885520964",
         });
+        console.log("Emergency call triggered for", parsed.risk_level, "confidence:", parsed.confidence);
       } catch (twilioErr) {
         console.error("Twilio call failed:", twilioErr);
       }

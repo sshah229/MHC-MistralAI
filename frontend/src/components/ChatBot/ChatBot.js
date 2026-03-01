@@ -306,30 +306,12 @@ async function makeSpeech(text) {
 const STYLES = {
   area: {
     position: "absolute",
-    top: "20px",
-    left: "10px",
+    top: "0px",
+    left: "0px",
     zIndex: 500,
-    width: "50vw",
+    width: "100%",
+    height: "100%",
   },
-  text: {
-    margin: "0px",
-    width: "300px",
-    padding: "5px",
-    background: "none",
-    color: "#ffffff",
-    fontSize: "1.2em",
-    border: "none",
-  },
-  speak: {
-    padding: "10px",
-    marginTop: "5px",
-    display: "block",
-    color: "#FFFFFF",
-    background: "#222222",
-    border: "None",
-  },
-  area2: { position: "absolute", top: "5px", right: "15px", zIndex: 500 },
-  label: { color: "#777777", fontSize: "0.8em" },
 };
 
 const LANGUAGES = [
@@ -345,7 +327,16 @@ const LANGUAGES = [
 
 const ChatBot = () => {
   const navigate = useNavigate();
-  const [chats, setChats] = useState([]);
+  const [chats, setChats] = useState(() => {
+    try {
+      const saved = sessionStorage.getItem("sakhi_chats");
+      if (saved) {
+        sessionStorage.removeItem("sakhi_chats");
+        return JSON.parse(saved);
+      }
+    } catch {}
+    return [];
+  });
   const videoConstraints = {
     width: 1280,
     height: 720,
@@ -369,6 +360,7 @@ const ChatBot = () => {
   const [sessionSummary, setSessionSummary] = useState(null);
   const [facialEmotion, setFacialEmotion] = useState(null);
   const [faceModelsLoaded, setFaceModelsLoaded] = useState(false);
+  const [preferredAgent, setPreferredAgent] = useState("");
   const faceIntervalRef = useRef(null);
   const silenceTimerRef = useRef(null);
   const handsFreeTimerRef = useRef(null);
@@ -686,7 +678,7 @@ const ChatBot = () => {
         setChats((prev) => [
           ...prev,
           { role: "User", msg: message },
-          { role: "Guardian", msg: SAFETY_AUTO_CALL_RESPONSE, agent: "guardian" },
+          { role: "Haven", msg: SAFETY_AUTO_CALL_RESPONSE, agent: "haven" },
         ]);
         setInputText("");
         try {
@@ -705,13 +697,12 @@ const ChatBot = () => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          message:
-            "Answer this as a mental health companion, a friend and you will support me no matter what " +
-            message,
+          message,
           email,
           language: language || undefined,
           sessionId: sessionId || undefined,
           facialEmotion: facialEmotion || undefined,
+          preferredAgent: preferredAgent || undefined,
         }),
       });
 
@@ -796,7 +787,13 @@ const ChatBot = () => {
       }
 
       if (meta?.action === "breathing_exercise") {
-        setTimeout(() => navigate("/breathing"), 3000);
+        setTimeout(() => {
+          setChats((prev) => {
+            sessionStorage.setItem("sakhi_chats", JSON.stringify(prev));
+            return prev;
+          });
+          navigate("/breathing");
+        }, 3000);
       }
 
       const key = meta?.sentiment?.toLowerCase();
@@ -844,245 +841,278 @@ const ChatBot = () => {
   const voiceStatusLabel = transcript || voiceStatusByState[voiceUiState] || "Mic ready";
 
   return (
-    <div className="w-full flex">
-      <div className="absolute flex items-center right-4 top-4 z-[1000]">
-        <select
-          value={language}
-          onChange={(e) => setLanguage(e.target.value)}
-          className="mr-4 px-3 py-1.5 rounded-lg bg-white/80 text-sm border border-sky-300 text-sky-700 outline-none"
-        >
-          {LANGUAGES.map((lang) => (
-            <option key={lang.code} value={lang.code}>
-              {lang.label}
-            </option>
-          ))}
-        </select>
-        <h1 className="text-xl text-sky-500 mr-4">{name}</h1>
-        <div className="h-12 w-12 rounded-full bg-gray-300/30 flex justify-center items-center text-sky-500">
-          <BiSolidUser size={30} />
+    <div className="w-full h-screen bg-slate-950 relative overflow-hidden">
+      {/* Top bar */}
+      <div className="absolute top-0 left-0 right-0 z-[1000] flex items-center justify-between px-6 py-3 bg-slate-900/60 backdrop-blur-md border-b border-white/5">
+        <div className="w-10" />
+        <div className="flex items-center gap-3">
+          <select
+            value={language}
+            onChange={(e) => setLanguage(e.target.value)}
+            className="px-3 py-1.5 rounded-lg bg-slate-800 text-sm border border-white/10 text-slate-300 outline-none cursor-pointer hover:border-teal-500/50 transition"
+          >
+            {LANGUAGES.map((lang) => (
+              <option key={lang.code} value={lang.code}>
+                {lang.label}
+              </option>
+            ))}
+          </select>
+          <select
+            value={preferredAgent}
+            onChange={(e) => setPreferredAgent(e.target.value)}
+            className="px-3 py-1.5 rounded-lg bg-slate-800 text-sm border border-white/10 text-slate-300 outline-none cursor-pointer hover:border-teal-500/50 transition"
+          >
+            <option value="">Auto</option>
+            <option value="sakhi">Sakhi</option>
+            <option value="sage">Sage</option>
+            <option value="haven">Haven</option>
+          </select>
+        </div>
+        <div className="flex items-center gap-3">
+          <span className="text-sm text-slate-400">{name}</span>
+          <div className="h-9 w-9 rounded-full bg-slate-800 border border-white/10 flex justify-center items-center text-teal-400">
+            <BiSolidUser size={18} />
+          </div>
         </div>
       </div>
-      <div className="relative w-[50vw]">
-        <div
-          style={STYLES.area}
-          className="flex flex-col justify-between h-[90vh]"
+
+      {/* 3D Canvas — full screen behind everything */}
+      <div className="absolute inset-0">
+        <Canvas
+          dpr={2}
+          onCreated={(ctx) => {
+            ctx.gl.physicallyCorrectLights = true;
+          }}
         >
-          <div
-            className={`max-w-[350px] ${!chat && "invisible"
-              } flex flex-col mb-16 min-h-[450px]`}
-          >
-            <div
-              className="bg-sky-50 max-w-[350px] flex flex-col p-4 min-h-[450px] max-h-[450px] overflow-y-auto"
-              style={{
-                zIndex: 1000,
-              }}
-            >
-              <h1 className="text-center text-xl font-semibold mb-2">
-                Chat Window
-              </h1>
-              {chats?.map((chat, idx) => {
-                const agentColors = {
-                  listener: "bg-blue-100 text-blue-700",
-                  coach: "bg-green-100 text-green-700",
-                  guardian: "bg-red-100 text-red-700",
-                };
-                const badgeClass = chat.agent ? agentColors[chat.agent] || "" : "";
-                return (
-                  <div key={idx} className="mb-2">
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold text-lg">{chat.role}</span>
-                      {chat.agent && (
-                        <span className={`text-xs px-2 py-0.5 rounded-full ${badgeClass}`}>
-                          {chat.role}
+          <OrthographicCamera makeDefault zoom={1700} position={[0, 1.65, 1]} />
+          <Suspense fallback={null}>
+            <Environment background={false} files="/images/photo_studio_loft_hall_1k.hdr" />
+          </Suspense>
+          <Suspense fallback={null}>
+            <Bg />
+          </Suspense>
+          <Suspense fallback={null}>
+            <Avatar
+              avatar_url="/model.glb"
+              speak={speak}
+              setSpeak={setSpeak}
+              audioPayload={audioPayload}
+              setAudioSource={setAudioSource}
+              playing={playing}
+            />
+          </Suspense>
+        </Canvas>
+        <Loader dataInterpolation={(p) => `Loading... please wait`} />
+      </div>
+
+      {/* Hidden audio player */}
+      <div className="w-0 h-0">
+        <ReactAudioPlayer
+          src={audioSource}
+          ref={audioPlayer}
+          onEnded={playerEnded}
+          onCanPlayThrough={playerReady}
+        />
+      </div>
+
+      {/* Hidden webcam */}
+      <Webcam
+        ref={imgRef}
+        audio={false}
+        height={0}
+        screenshotFormat="image/jpeg"
+        width={0}
+        videoConstraints={videoConstraints}
+        className="absolute w-0 h-0 opacity-0"
+      >
+        {() => <button className="hidden" aria-hidden>Hidden capture trigger</button>}
+      </Webcam>
+
+      {/* Chat panel — slides in from left */}
+      <div
+        className={`absolute top-16 left-4 bottom-28 z-[800] w-[380px] flex flex-col transition-all duration-300 ${
+          chat ? "translate-x-0 opacity-100" : "-translate-x-full opacity-0 pointer-events-none"
+        }`}
+      >
+        <div className="flex-1 bg-slate-900/80 backdrop-blur-lg border border-white/5 rounded-2xl flex flex-col overflow-hidden">
+          <div className="flex-1 overflow-y-auto p-4 space-y-3">
+            {chats?.length === 0 && (
+              <p className="text-slate-500 text-sm text-center mt-8">Start a conversation...</p>
+            )}
+            {chats?.map((c, idx) => {
+              const isUser = c.role === "You";
+              const agentColors = {
+                sakhi: "text-purple-400",
+                sage: "text-emerald-400",
+                haven: "text-amber-400",
+              };
+              const agentBadgeColors = {
+                sakhi: "bg-purple-500/20 text-purple-300",
+                sage: "bg-emerald-500/20 text-emerald-300",
+                haven: "bg-amber-500/20 text-amber-300",
+              };
+              return (
+                <div key={idx} className={`flex flex-col ${isUser ? "items-end" : "items-start"}`}>
+                  <div
+                    className={`max-w-[90%] px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${
+                      isUser
+                        ? "bg-teal-500/20 text-teal-100 rounded-br-md"
+                        : "bg-slate-800/80 text-slate-200 rounded-bl-md"
+                    }`}
+                  >
+                    {!isUser && c.agent && (
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className={`text-xs font-semibold ${agentColors[c.agent] || "text-slate-400"}`}>
+                          {c.role}
                         </span>
-                      )}
-                    </div>
-                    <p className="text-lg">{chat.msg}</p>
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${agentBadgeColors[c.agent] || "bg-slate-700 text-slate-400"}`}>
+                          {c.agent}
+                        </span>
+                      </div>
+                    )}
+                    <p>{c.msg}</p>
                   </div>
-                );
-              })}
-            </div>
-            <div className="mt-4 bg-white flex flex-row p-2 rounded">
+                </div>
+              );
+            })}
+          </div>
+          {/* Input */}
+          <div className="p-3 border-t border-white/5">
+            <div className="flex items-center gap-2 bg-slate-800/60 rounded-xl px-3 py-2">
               <input
                 type="text"
-                placeholder="Enter Message"
-                className="w-full outline-none"
+                placeholder="Type a message..."
+                className="flex-1 bg-transparent text-sm text-slate-200 placeholder-slate-500 outline-none"
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && inputText.trim()) getResponse(inputText);
+                }}
               />
               <button
-                onClick={() => {
-                  console.log("Hello");
-                  getResponse(inputText);
-                }}
+                onClick={() => { if (inputText.trim()) getResponse(inputText); }}
+                className="p-2 rounded-lg bg-teal-500/20 text-teal-400 hover:bg-teal-500/30 transition"
               >
-                <AiOutlineSend className="ml-4" size={25} />
+                <AiOutlineSend size={16} />
               </button>
             </div>
           </div>
-          <div className="flex gap-2">
+        </div>
+      </div>
+
+      {/* Bottom controls */}
+      <div className="absolute bottom-0 left-0 right-0 z-[800] px-6 py-4 bg-gradient-to-t from-slate-950 via-slate-950/80 to-transparent">
+        <div className="flex items-center justify-between max-w-4xl mx-auto">
+          {/* Left: action buttons */}
+          <div className="flex items-center gap-2">
             <button
               onClick={() => setChat((prev) => !prev)}
-              className="bg-teal-200 p-2 rounded text-lg w-[100px] mb-6"
+              className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+                chat
+                  ? "bg-teal-500/20 text-teal-300 border border-teal-500/30"
+                  : "bg-slate-800/80 text-slate-400 border border-white/5 hover:text-slate-200"
+              }`}
             >
-              Chat
+              {chat ? "Hide Chat" : "Chat"}
             </button>
             <button
               onClick={endSession}
-              className="bg-purple-200 p-2 rounded text-lg w-[140px] mb-6"
+              className="px-4 py-2 rounded-xl text-sm font-medium bg-slate-800/80 text-slate-400 border border-white/5 hover:text-slate-200 transition-all"
             >
               End Session
             </button>
           </div>
-          <div className="flex flex-col">
-            <p className="text-md text-white mb-2">{voiceStatusLabel}</p>
-            <div className="flex flex-row items-center gap-3">
-              <button
-                className={`p-3 rounded-full text-lg w-[56px] h-[56px] flex items-center justify-center transition ${
-                  listening ? "bg-red-200 text-red-700" : "bg-teal-200 text-teal-700"
-                } ${sttLoading ? "opacity-60 cursor-not-allowed" : ""}`}
-                onClick={handleMicButton}
-                disabled={sttLoading}
-                title={listening ? "Stop and send" : "Start listening"}
-              >
-                {listening ? <FiMicOff size={22} /> : <FiMic size={22} />}
-              </button>
-              <button
-                className={`px-3 py-2 rounded-full text-sm transition ${
-                  handsFree ? "bg-purple-200 text-purple-800" : "bg-white/80 text-gray-700"
-                }`}
-                onClick={toggleHandsFree}
-                disabled={sttLoading}
-                title="Toggle hands-free mode"
-              >
-                Hands-free: {handsFree ? "On" : "Off"}
-              </button>
-              {handsFree && (
-                <button
-                  className="p-2 rounded-full bg-white/80 text-gray-700"
-                  onClick={toggleHandsFree}
-                  title="Pause hands-free"
-                >
-                  <FiPauseCircle size={22} />
-                </button>
-              )}
 
-              {facialEmotion && (
-                <span className="bg-indigo-100 text-indigo-700 px-3 py-1 rounded-full text-sm">
-                  Detected: {facialEmotion}
-                </span>
-              )}
-              <Webcam
-                ref={imgRef}
-                audio={false}
-                height={0}
-                screenshotFormat="image/jpeg"
-                width={0}
-                videoConstraints={videoConstraints}
+          {/* Center: mic + voice controls */}
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-slate-500 mr-1">{voiceStatusLabel}</span>
+            <button
+              className={`p-3 rounded-full transition-all ${
+                listening
+                  ? "bg-red-500/20 text-red-400 border border-red-500/30 shadow-lg shadow-red-500/10"
+                  : "bg-teal-500/20 text-teal-400 border border-teal-500/30 hover:shadow-lg hover:shadow-teal-500/10"
+              } ${sttLoading ? "opacity-50 cursor-not-allowed" : ""}`}
+              onClick={handleMicButton}
+              disabled={sttLoading}
+              title={listening ? "Stop and send" : "Start listening"}
+            >
+              {listening ? <FiMicOff size={20} /> : <FiMic size={20} />}
+            </button>
+            <button
+              className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all border ${
+                handsFree
+                  ? "bg-purple-500/20 text-purple-300 border-purple-500/30"
+                  : "bg-slate-800/80 text-slate-400 border-white/5 hover:text-slate-200"
+              }`}
+              onClick={toggleHandsFree}
+              disabled={sttLoading}
+              title="Toggle hands-free mode"
+            >
+              Hands-free: {handsFree ? "On" : "Off"}
+            </button>
+            {handsFree && (
+              <button
+                className="p-1.5 rounded-full bg-slate-800/80 text-slate-400 border border-white/5 hover:text-slate-200 transition"
+                onClick={toggleHandsFree}
+                title="Pause hands-free"
               >
-                {() => (
-                  <button
-                    className="hidden"
-                    aria-hidden
-                  >
-                    Hidden capture trigger
-                  </button>
-                )}
-              </Webcam>
-            </div>
+                <FiPauseCircle size={18} />
+              </button>
+            )}
+          </div>
+
+          {/* Right: emotion badge */}
+          <div className="flex items-center gap-2 min-w-[120px] justify-end">
+            {facialEmotion && (
+              <span className="bg-indigo-500/20 text-indigo-300 border border-indigo-500/20 px-3 py-1 rounded-full text-xs">
+                {facialEmotion}
+              </span>
+            )}
           </div>
         </div>
-        <div className="w-0 h-0">
-          <ReactAudioPlayer
-            src={audioSource}
-            ref={audioPlayer}
-            onEnded={playerEnded}
-            onCanPlayThrough={playerReady}
-          />
-        </div>
-
-        {/* <Stats /> */}
-        <div className="w-[83vw]">
-          <Canvas
-            dpr={2}
-            onCreated={(ctx) => {
-              ctx.gl.physicallyCorrectLights = true;
-            }}
-          >
-            <OrthographicCamera
-              makeDefault
-              zoom={1700}
-              position={[0, 1.65, 1]}
-            />
-
-            {/* <OrbitControls
-          target={[0, 1.65, 0]}
-        /> */}
-
-            <Suspense fallback={null}>
-              <Environment
-                background={false}
-                files="/images/photo_studio_loft_hall_1k.hdr"
-              />
-            </Suspense>
-
-            <Suspense fallback={null}>
-              <Bg />
-            </Suspense>
-
-            <Suspense fallback={null}>
-              <Avatar
-                avatar_url="/model.glb"
-                speak={speak}
-                setSpeak={setSpeak}
-                audioPayload={audioPayload}
-                setAudioSource={setAudioSource}
-                playing={playing}
-              />
-            </Suspense>
-          </Canvas>
-        </div>
-        <Loader dataInterpolation={(p) => `Loading... please wait`} />
       </div>
 
+      {/* Mood Journey Modal */}
       {moodJourney && (
-        <div className="fixed inset-0 bg-black/50 z-[2000] flex items-center justify-center">
-          <div className="bg-white rounded-xl p-6 max-w-lg w-full mx-4 max-h-[80vh] overflow-y-auto">
-            <h2 className="text-2xl font-bold text-purple-700 mb-4">Your Mood Journey</h2>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[2000] flex items-center justify-center">
+          <div className="bg-slate-900 border border-white/10 rounded-2xl p-6 max-w-lg w-full mx-4 max-h-[80vh] overflow-y-auto">
+            <h2 className="text-2xl font-bold bg-gradient-to-r from-teal-400 to-cyan-300 bg-clip-text text-transparent mb-4">
+              Your Mood Journey
+            </h2>
             {sessionSummary && (
-              <p className="text-gray-700 mb-4 italic">{sessionSummary}</p>
+              <p className="text-slate-400 mb-4 italic text-sm">{sessionSummary}</p>
             )}
-            <div className="space-y-2">
+            <div className="space-y-3">
               {moodJourney.map((point, i) => {
                 const colors = {
-                  Happy: "bg-green-200 text-green-800",
-                  Sad: "bg-blue-200 text-blue-800",
-                  Anxious: "bg-yellow-200 text-yellow-800",
-                  Angry: "bg-red-200 text-red-800",
-                  Neutral: "bg-gray-200 text-gray-800",
+                  Happy: "bg-green-500/20 text-green-300",
+                  Sad: "bg-blue-500/20 text-blue-300",
+                  Anxious: "bg-yellow-500/20 text-yellow-300",
+                  Angry: "bg-red-500/20 text-red-300",
+                  Neutral: "bg-slate-700/50 text-slate-300",
                 };
                 return (
                   <div key={i} className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center text-sm font-bold text-purple-600">
+                    <div className="w-7 h-7 rounded-full bg-teal-500/20 flex items-center justify-center text-xs font-bold text-teal-300">
                       {i + 1}
                     </div>
-                    <span className={`px-3 py-1 rounded-full text-sm ${colors[point.emotion_category] || "bg-gray-100"}`}>
+                    <span className={`px-2.5 py-0.5 rounded-full text-xs ${colors[point.emotion_category] || "bg-slate-700 text-slate-400"}`}>
                       {point.emotion_category}
                     </span>
-                    <div className="flex-1 bg-gray-100 rounded-full h-3">
+                    <div className="flex-1 bg-slate-800 rounded-full h-2">
                       <div
-                        className="bg-purple-500 h-3 rounded-full transition-all"
+                        className="bg-gradient-to-r from-teal-500 to-cyan-400 h-2 rounded-full transition-all"
                         style={{ width: `${(point.emotion_intensity / 10) * 100}%` }}
                       />
                     </div>
-                    <span className="text-sm text-gray-500">{point.emotion_intensity}/10</span>
+                    <span className="text-xs text-slate-500">{point.emotion_intensity}/10</span>
                   </div>
                 );
               })}
             </div>
             <button
               onClick={() => { setMoodJourney(null); setSessionSummary(null); }}
-              className="mt-6 w-full bg-purple-500 text-white py-2 rounded-lg hover:bg-purple-600 transition"
+              className="mt-6 w-full bg-gradient-to-r from-teal-500 to-cyan-500 text-white py-2.5 rounded-xl font-medium hover:shadow-lg hover:shadow-teal-500/20 transition-all"
             >
               Close
             </button>

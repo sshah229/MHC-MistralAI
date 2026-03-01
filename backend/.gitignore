@@ -14,7 +14,7 @@ yarn-error.log
 # .env
 # .env*
 
-# Generated TTS audio
+# Generated TTS audio files
 src/public/speech-*.mp3
 
 # Code coverage

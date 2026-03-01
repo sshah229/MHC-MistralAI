@@ -83,19 +83,19 @@ const Dashboard = () => {
   }));
 
   return (
-    <div className="flex flex-row w-full">
+    <div className="min-h-screen bg-slate-950 text-white">
       <Navbar />
-      <div className="w-full p-6 space-y-6">
+      <div className="flex-1 p-8 overflow-y-auto space-y-6">
         <button
           onClick={() => (window.history.length > 1 ? navigate(-1) : navigate("/insights"))}
-          className="flex items-center gap-2 text-slate-500 hover:text-slate-800 transition-colors"
+          className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors"
         >
           <FiArrowLeft size={18} />
           <span className="text-sm font-medium">Back</span>
         </button>
         {/* Header + Range Buttons */}
-        <div className="flex items-center justify-between bg-blue-100 p-4 rounded-lg">
-          <h1 className="text-2xl font-bold text-blue-800">Mood Dashboard</h1>
+        <div className="flex items-center justify-between bg-blue-500/20 border border-blue-400/20 p-4 rounded-2xl">
+          <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-cyan-300 bg-clip-text text-transparent">Mood Dashboard</h1>
           <div className="space-x-2">
             {[
               { key: "30m", label: "Last 30 mins" },
@@ -104,8 +104,8 @@ const Dashboard = () => {
             ].map(({ key, label }) => (
               <button
                 key={key}
-                className={`px-3 py-1 rounded ${
-                  range === key ? "bg-blue-500 text-white" : "bg-white"
+                className={`px-3 py-1 rounded-lg transition ${
+                  range === key ? "bg-blue-500 text-white" : "bg-slate-800 text-slate-300 hover:bg-slate-700"
                 }`}
                 onClick={() => setRange(key)}
               >
@@ -116,14 +116,14 @@ const Dashboard = () => {
         </div>
 
         {/* Gemini Summary */}
-        <div className="bg-white p-4 rounded-lg shadow">
-          <h2 className="text-lg font-semibold mb-2">Insight</h2>
-          <p className="text-gray-700">{summary}</p>
+        <div className="bg-slate-900/80 border border-white/10 p-4 rounded-2xl">
+          <h2 className="text-lg font-semibold mb-2 text-white">Insight</h2>
+          <p className="text-slate-300">{summary}</p>
         </div>
 
         {/* Emoji Summary */}
-        <div className="bg-white p-4 rounded-lg shadow">
-          <h2 className="text-lg font-semibold mb-2">Emotions Experienced</h2>
+        <div className="bg-slate-900/80 border border-white/10 p-4 rounded-2xl">
+          <h2 className="text-lg font-semibold mb-2 text-white">Emotions Experienced</h2>
           <div className="flex">
             {emojiStatus.map(({ emoji, experienced }, i) => (
               <span
@@ -139,8 +139,8 @@ const Dashboard = () => {
         </div>
 
         {/* Emotion Intensity Over Time */}
-        <div className="bg-white p-4 rounded-lg shadow">
-          <h2 className="text-lg font-semibold mb-2">
+        <div className="bg-slate-900/80 border border-white/10 p-4 rounded-2xl">
+          <h2 className="text-lg font-semibold mb-2 text-white">
             Emotion Intensity Over Time
           </h2>
           <ResponsiveContainer width="100%" height={250}>
@@ -165,8 +165,8 @@ const Dashboard = () => {
         </div>
 
         {/* Emotion Frequency Chart */}
-        <div className="bg-white p-4 rounded-lg shadow">
-          <h2 className="text-lg font-semibold mb-2">Emotion Frequency</h2>
+        <div className="bg-slate-900/80 border border-white/10 p-4 rounded-2xl">
+          <h2 className="text-lg font-semibold mb-2 text-white">Emotion Frequency</h2>
           <ResponsiveContainer width="100%" height={250}>
             <BarChart data={freqData}>
               <XAxis dataKey="emotion" />

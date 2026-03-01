@@ -25,7 +25,7 @@ function VideoCard({ d, index, done, onMarkDone }) {
     : null;
 
   return (
-    <div className="bg-white rounded-2xl overflow-hidden shadow-sm border border-slate-100 hover:shadow-lg transition-all duration-200 flex flex-col">
+    <div className="bg-slate-900/80 rounded-2xl overflow-hidden border border-white/10 hover:border-white/20 transition-all duration-200 flex flex-col">
       <div className="relative w-full" style={{ aspectRatio: "16/9" }}>
         {!embedError ? (
           <YouTubePlayer
@@ -50,8 +50,8 @@ function VideoCard({ d, index, done, onMarkDone }) {
                 className="w-full h-full object-cover"
               />
             ) : (
-              <div className="w-full h-full bg-slate-200 flex items-center justify-center">
-                <span className="text-slate-400">Video unavailable</span>
+              <div className="w-full h-full bg-slate-800 flex items-center justify-center">
+                <span className="text-slate-500">Video unavailable</span>
               </div>
             )}
             <div className="absolute inset-0 bg-black/30 flex items-center justify-center group-hover:bg-black/40 transition-colors">
@@ -67,7 +67,7 @@ function VideoCard({ d, index, done, onMarkDone }) {
       </div>
 
       <div className="p-4 flex flex-col flex-1">
-        <h2 className="font-semibold text-slate-800 line-clamp-2 leading-snug">
+        <h2 className="font-semibold text-white line-clamp-2 leading-snug">
           {d.title}
         </h2>
 
@@ -76,19 +76,19 @@ function VideoCard({ d, index, done, onMarkDone }) {
             href={d.channel_link}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-sm text-red-700 hover:text-red-900 truncate max-w-[60%]"
+            className="text-sm text-red-400 hover:text-red-300 truncate max-w-[60%]"
           >
             {d.channel}
           </a>
 
           {done ? (
-            <span className="text-sm font-medium text-emerald-600 flex items-center gap-1">
+            <span className="text-sm font-medium text-emerald-400 flex items-center gap-1">
               <TiTick size={18} /> Done
             </span>
           ) : (
             <button
               onClick={() => onMarkDone(index)}
-              className="flex items-center gap-1 text-sm font-medium text-teal-700 hover:text-teal-900 bg-teal-50 hover:bg-teal-100 px-3 py-1.5 rounded-lg transition-colors"
+              className="flex items-center gap-1 text-sm font-medium text-teal-300 hover:text-teal-200 bg-teal-500/20 hover:bg-teal-500/30 px-3 py-1.5 rounded-lg transition-colors"
             >
               <TiTick size={18} /> Mark done
             </button>
@@ -100,7 +100,7 @@ function VideoCard({ d, index, done, onMarkDone }) {
             href={d.link}
             target="_blank"
             rel="noopener noreferrer"
-            className="mt-2 text-xs text-slate-400 hover:text-slate-600 flex items-center gap-1"
+            className="mt-2 text-xs text-slate-500 hover:text-slate-300 flex items-center gap-1"
           >
             <FiExternalLink size={11} /> Open on YouTube
           </a>
@@ -144,35 +144,35 @@ const Plans = () => {
   const progress = data.length > 0 ? Math.round((completedCount / data.length) * 100) : 0;
 
   return (
-    <div className="flex flex-row w-full min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-slate-950 text-white">
       <Navbar />
       <div className="flex-1 overflow-y-auto">
-        <div className="bg-gradient-to-r from-teal-600 to-cyan-600 px-8 py-6 text-white">
+        <div className="bg-gradient-to-r from-teal-600/30 to-cyan-600/30 border-b border-teal-400/20 px-8 py-6">
           <button
             onClick={() => (window.history.length > 1 ? navigate(-1) : navigate("/activities"))}
-            className="flex items-center gap-2 text-white/70 hover:text-white mb-4 transition-colors"
+            className="flex items-center gap-2 text-slate-400 hover:text-white mb-4 transition-colors"
           >
             <FiArrowLeft size={16} />
             <span className="text-sm font-medium">Back</span>
           </button>
-          <h1 className="text-3xl font-bold">Personalized Plans</h1>
-          <p className="text-white/80 mt-1">Videos curated just for you — watch and track your progress.</p>
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-teal-400 to-cyan-300 bg-clip-text text-transparent">Personalized Plans</h1>
+          <p className="text-slate-400 mt-1">Videos curated just for you — watch and track your progress.</p>
         </div>
 
         <div className="px-8 py-6">
           <div className="max-w-xl mb-8">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium text-slate-600">
+              <span className="text-sm font-medium text-slate-400">
                 Progress: {completedCount} / {data.length} completed
               </span>
-              <span className="text-sm font-semibold text-teal-700">{progress}%</span>
+              <span className="text-sm font-semibold text-teal-400">{progress}%</span>
             </div>
             <ProgressBar
               completed={progress}
               bgColor="#0d9488"
               height="10px"
               isLabelVisible={false}
-              baseBgColor="#e2e8f0"
+              baseBgColor="#1e293b"
               borderRadius="999px"
             />
           </div>

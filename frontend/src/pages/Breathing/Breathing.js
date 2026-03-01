@@ -91,11 +91,11 @@ const Breathing = () => {
     : 1;
 
   return (
-    <div className="flex flex-row w-full min-h-screen">
+    <div className="min-h-screen bg-slate-950 text-white">
       <Navbar />
-      <div className="flex-1 flex flex-col items-center justify-center bg-gradient-to-br from-slate-50 to-blue-50 p-8">
-        <h1 className="text-3xl font-bold text-blue-800 mb-2">Breathing Exercise</h1>
-        <p className="text-gray-500 mb-8">Box breathing technique: 4-4-4-4</p>
+      <div className="flex-1 flex flex-col items-center justify-center min-h-screen p-8">
+        <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-cyan-300 bg-clip-text text-transparent mb-2">Breathing Exercise</h1>
+        <p className="text-slate-400 mb-8">Box breathing technique: 4-4-4-4</p>
 
         {!active && !finished && (
           <button
@@ -108,7 +108,7 @@ const Breathing = () => {
 
         {active && (
           <div className="flex flex-col items-center">
-            <p className="text-sm text-gray-400 mb-4">
+            <p className="text-sm text-slate-500 mb-4">
               Cycle {cycle + 1} of {TOTAL_CYCLES}
             </p>
             <div className="relative flex items-center justify-center w-64 h-64">
@@ -132,15 +132,15 @@ const Breathing = () => {
         {finished && !submitted && (
           <div className="flex flex-col items-center max-w-md w-full">
             <div className="text-6xl mb-4">🌿</div>
-            <h2 className="text-2xl font-semibold text-teal-700 mb-2">Great job!</h2>
-            <p className="text-gray-600 mb-6 text-center">
+            <h2 className="text-2xl font-semibold text-teal-400 mb-2">Great job!</h2>
+            <p className="text-slate-300 mb-6 text-center">
               You completed {TOTAL_CYCLES} cycles of box breathing. How do you feel now?
             </p>
             <textarea
               value={checkInText}
               onChange={(e) => setCheckInText(e.target.value)}
               placeholder="I feel..."
-              className="w-full p-4 border border-gray-200 rounded-xl mb-4 resize-none h-24 focus:outline-none focus:ring-2 focus:ring-teal-300"
+              className="w-full p-4 bg-slate-900 border border-white/10 rounded-xl mb-4 resize-none h-24 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-teal-500"
             />
             <div className="flex gap-3 w-full">
               <button
@@ -151,7 +151,7 @@ const Breathing = () => {
               </button>
               <button
                 onClick={startExercise}
-                className="flex-1 bg-blue-100 text-blue-700 py-3 rounded-xl hover:bg-blue-200 transition"
+                className="flex-1 bg-blue-500/20 text-blue-300 py-3 rounded-xl hover:bg-blue-500/30 transition"
               >
                 Do Again
               </button>
@@ -162,12 +162,12 @@ const Breathing = () => {
         {submitted && (
           <div className="flex flex-col items-center">
             <div className="text-6xl mb-4">✨</div>
-            <h2 className="text-2xl font-semibold text-teal-700 mb-2">Thank you for checking in</h2>
-            <p className="text-gray-500 mb-6">Your response has been recorded.</p>
+            <h2 className="text-2xl font-semibold text-teal-400 mb-2">Thank you for checking in</h2>
+            <p className="text-slate-400 mb-6">Your response has been recorded.</p>
             <div className="flex gap-3">
               <button
                 onClick={startExercise}
-                className="bg-blue-100 text-blue-700 px-6 py-3 rounded-xl hover:bg-blue-200 transition"
+                className="bg-blue-500/20 text-blue-300 px-6 py-3 rounded-xl hover:bg-blue-500/30 transition"
               >
                 Do Again
               </button>

@@ -26,21 +26,21 @@ const Assessments = () => {
   const navigate = useNavigate();
 
   return (
-    <div className="flex flex-row w-full min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-slate-950 text-white">
       <Navbar />
-      <div className="flex-1 p-8 bg-gradient-to-br from-rose-50 via-white to-emerald-50 overflow-y-auto">
+      <div className="flex-1 p-8 overflow-y-auto">
         <div className="max-w-5xl mx-auto">
           <button
             onClick={() => (window.history.length > 1 ? navigate(-1) : navigate("/home"))}
-            className="flex items-center gap-2 text-slate-500 hover:text-slate-800 mb-6 transition-colors"
+            className="flex items-center gap-2 text-slate-400 hover:text-white mb-6 transition-colors"
           >
             <FiArrowLeft size={18} />
             <span className="text-sm font-medium">Back</span>
           </button>
 
           <div className="mb-8">
-            <h1 className="text-3xl md:text-4xl font-bold text-slate-800">Assessments</h1>
-            <p className="text-slate-500 mt-2">
+            <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-rose-400 to-pink-300 bg-clip-text text-transparent">Assessments</h1>
+            <p className="text-slate-400 mt-2">
               Complete quick quizzes to get personalized health and nutrition insights.
             </p>
           </div>
@@ -50,7 +50,7 @@ const Assessments = () => {
               <Link
                 key={card.title}
                 to={card.path}
-                className="group bg-white rounded-2xl p-6 shadow-sm border border-slate-100 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200"
+                className="group bg-slate-900/80 rounded-2xl p-6 border border-white/10 hover:border-white/20 hover:-translate-y-0.5 transition-all duration-200"
               >
                 <div className="flex items-start justify-between">
                   <div>
@@ -59,12 +59,12 @@ const Assessments = () => {
                     >
                       <card.Icon size={22} />
                     </div>
-                    <h2 className="text-xl font-semibold text-slate-800 mt-4">{card.title}</h2>
-                    <p className="text-slate-500 mt-2 leading-relaxed">{card.subtitle}</p>
+                    <h2 className="text-xl font-semibold text-white mt-4">{card.title}</h2>
+                    <p className="text-slate-400 mt-2 leading-relaxed">{card.subtitle}</p>
                   </div>
                   <FiArrowRightCircle
                     size={24}
-                    className="text-slate-300 group-hover:text-slate-500 transition-colors mt-1"
+                    className="text-slate-600 group-hover:text-slate-400 transition-colors mt-1"
                   />
                 </div>
               </Link>
