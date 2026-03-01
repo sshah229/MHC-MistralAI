@@ -1,5 +1,7 @@
 // src/pages/Dashboard.jsx
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { FiArrowLeft } from "react-icons/fi";
 import axios from "axios";
 import Navbar from "../../components/Navbar/Navbar";
 import {
@@ -22,6 +24,7 @@ const emotionMap = [
 ];
 
 const Dashboard = () => {
+  const navigate = useNavigate();
   const [logs, setLogs] = useState([]);
   const [range, setRange] = useState("30m");
   const [summary, setSummary] = useState("Loading insights...");
@@ -83,6 +86,13 @@ const Dashboard = () => {
     <div className="flex flex-row w-full">
       <Navbar />
       <div className="w-full p-6 space-y-6">
+        <button
+          onClick={() => (window.history.length > 1 ? navigate(-1) : navigate("/insights"))}
+          className="flex items-center gap-2 text-slate-500 hover:text-slate-800 transition-colors"
+        >
+          <FiArrowLeft size={18} />
+          <span className="text-sm font-medium">Back</span>
+        </button>
         {/* Header + Range Buttons */}
         <div className="flex items-center justify-between bg-blue-100 p-4 rounded-lg">
           <h1 className="text-2xl font-bold text-blue-800">Mood Dashboard</h1>

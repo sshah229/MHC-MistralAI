@@ -1,51 +1,14 @@
 import React from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { FiHome, FiActivity, FiWind } from "react-icons/fi";
-import { SiPlanet } from "react-icons/si";
+import { FiHome, FiWind, FiTarget } from "react-icons/fi";
+import { MdQuiz } from "react-icons/md";
 import { BiSolidReport, BiLogOut, BiSolidPhoneCall } from "react-icons/bi";
 import { FaUserDoctor, FaAward } from "react-icons/fa6";
-import { MdOutlineFoodBank } from "react-icons/md";
-import { BsFillChatLeftTextFill, BsJournalText } from "react-icons/bs";
-import { HiSparkles } from "react-icons/hi";
+import { BsJournalText } from "react-icons/bs";
 import { ToastContainer, toast } from "react-toastify";
 import axios from "axios";
 import "react-toastify/dist/ReactToastify.css";
 import logo from "../../assets/logo.png";
-
-// Custom Target Logo component for Goal Tracker
-const TargetLogo = ({ color = "#CC0000", size = 25 }) => {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 100 100"
-      width={size}
-      height={size}
-    >
-      {/* Outer circle */}
-      <circle
-        cx="50"
-        cy="50"
-        r="45"
-        fill="none"
-        stroke={color}
-        strokeWidth="10"
-      />
-
-      {/* Middle circle */}
-      <circle
-        cx="50"
-        cy="50"
-        r="25"
-        fill="none"
-        stroke={color}
-        strokeWidth="10"
-      />
-
-      {/* Inner circle (bullseye) */}
-      <circle cx="50" cy="50" r="10" fill={color} />
-    </svg>
-  );
-};
 
 const navigations = [
   {
@@ -56,66 +19,46 @@ const navigations = [
   },
   {
     id: 2,
-    name: "Dashboard",
-    path: "/Dashboard",
-    Icon: ({ color }) => <FiActivity size={25} color={color} />,
-  },
-  {
-    id: 3,
-    name: "Plans",
-    path: "/plans",
-    Icon: ({ color }) => <SiPlanet size={25} color={color} />,
-  },
-  {
-    id: 4,
-    name: "Reports",
-    path: "/reports",
+    name: "Insights",
+    path: "/insights",
+    childPaths: ["/Dashboard", "/soul-report"],
     Icon: ({ color }) => <BiSolidReport size={25} color={color} />,
   },
   {
+    id: 3,
+    name: "Assessments",
+    path: "/assessments",
+    childPaths: ["/reports", "/diet-plan"],
+    Icon: ({ color }) => <MdQuiz size={25} color={color} />,
+  },
+  {
+    id: 4,
+    name: "Activities",
+    path: "/activities",
+    childPaths: ["/plans", "/rewards"],
+    Icon: ({ color }) => <FiTarget size={25} color={color} />,
+  },
+  {
     id: 5,
-    path: "/goals",
-    name: "Goal Tracker",
-    Icon: ({ color }) => <TargetLogo size={25} color={color} />, // Target logo for Goal Tracker
+    name: "Progress",
+    path: "/progress",
+    childPaths: ["/goals", "/journal"],
+    Icon: ({ color }) => <BsJournalText size={25} color={color} />,
   },
   {
     id: 6,
-    name: "Search Doctors",
-    path: "/search-doctors",
-    Icon: ({ color }) => <FaUserDoctor size={25} color={color} />,
-  },
-  {
-    id: 7,
-    path: "/diet-plan",
-    name: "Diet Plan",
-    Icon: ({ color }) => <MdOutlineFoodBank size={25} color={color} />,
-  },
-  {
-    id: 8,
-    path: "/rewards",
-    name: "Rewards",
-    Icon: ({ color }) => <FaAward size={25} color={color} />,
-  },
-  {
-    id: 9,
-    path: "/journal",
-    name: "Journal",
-    Icon: ({ color }) => <BsJournalText size={25} color={color} />, // Changed from FaAward to a journal icon
-  },
-  {
-    id: 10,
     path: "/breathing",
     name: "Breathing",
     Icon: ({ color }) => <FiWind size={25} color={color} />,
   },
   {
-    id: 11,
-    path: "/soul-report",
-    name: "Soul Report",
-    Icon: ({ color }) => <HiSparkles size={25} color={color} />,
+    id: 7,
+    name: "Search Doctors",
+    path: "/search-doctors",
+    Icon: ({ color }) => <FaUserDoctor size={25} color={color} />,
   },
   {
-    id: 12,
+    id: 8,
     name: "Emergency Call",
     path: "/emergency",
     Icon: ({ color }) => <BiSolidPhoneCall size={25} color={color} />,
@@ -184,38 +127,40 @@ const Navbar = () => {
 
         {/* Navigation section */}
         <div className="overflow-y-auto">
-          {navigations.map((nav) => (
-            <Link
-              to={nav.path}
-              key={nav.id}
-              onClick={(e) => {
-                if (nav.name === "Emergency Call") {
-                  e.preventDefault();
-                  handleEmergency();
-                }
-              }}
-              className="block mb-1 transition-all duration-200 hover:bg-teal-50 rounded-md"
-            >
-              <div
-                className={`flex flex-row items-center py-3 px-4 rounded-md ${
-                  location.pathname === nav.path ? "bg-teal-100" : ""
-                }`}
+          {navigations.map((nav) => {
+            const isActive =
+              location.pathname === nav.path ||
+              (nav.childPaths && nav.childPaths.includes(location.pathname));
+
+            return (
+              <Link
+                to={nav.path}
+                key={nav.id}
+                onClick={(e) => {
+                  if (nav.name === "Emergency Call") {
+                    e.preventDefault();
+                    handleEmergency();
+                  }
+                }}
+                className="block mb-1 transition-all duration-200 hover:bg-teal-50 rounded-md"
               >
-                <nav.Icon
-                  color={location.pathname === nav.path ? "#115E59" : "#5A5A5A"}
-                />
-                <h1
-                  className={`text-lg ml-3 ${
-                    location.pathname === nav.path
-                      ? "text-teal-800 font-semibold"
-                      : "text-gray-700"
+                <div
+                  className={`flex flex-row items-center py-3 px-4 rounded-md ${
+                    isActive ? "bg-teal-100" : ""
                   }`}
                 >
-                  {nav.name}
-                </h1>
-              </div>
-            </Link>
-          ))}
+                  <nav.Icon color={isActive ? "#115E59" : "#5A5A5A"} />
+                  <h1
+                    className={`text-lg ml-3 ${
+                      isActive ? "text-teal-800 font-semibold" : "text-gray-700"
+                    }`}
+                  >
+                    {nav.name}
+                  </h1>
+                </div>
+              </Link>
+            );
+          })}
         </div>
       </div>
 

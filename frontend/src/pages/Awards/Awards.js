@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { FiArrowLeft } from "react-icons/fi";
 import Navbar from "../../components/Navbar/Navbar";
 import ProgressBar from "@ramonak/react-progress-bar";
 import axios from "axios";
@@ -63,6 +65,7 @@ const initialRewards = [
 ];
 
 const Awards = () => {
+  const navigate = useNavigate();
   const [rewards, setRewards] = useState(initialRewards);
   const [userCoins, setUserCoins] = useState(800);
   const [targetCoins, setTargetCoins] = useState(1000);
@@ -135,8 +138,16 @@ const Awards = () => {
     <div className="flex flex-row">
       <Navbar />
       <div className="w-full">
-        <div className="flex flex-row items-center justify-between p-6 bg-teal-100 h-fit shadow-lg">
-          <h1 className="ml-4 text-3xl font-semibold text-teal-800">
+        <div className="p-6 bg-teal-100 shadow-lg">
+          <button
+            onClick={() => (window.history.length > 1 ? navigate(-1) : navigate("/activities"))}
+            className="flex items-center gap-2 text-teal-700 hover:text-teal-900 mb-3 transition-colors"
+          >
+            <FiArrowLeft size={18} />
+            <span className="text-sm font-medium">Back</span>
+          </button>
+          <div className="flex items-center justify-between">
+          <h1 className="ml-1 text-3xl font-semibold text-teal-800">
             Rewards for you!
           </h1>
           <div className="flex items-center">
@@ -149,6 +160,7 @@ const Awards = () => {
               <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9 5a1 1 0 012 0v2a1 1 0 11-2 0V5zm0 8a1 1 0 012 0v2a1 1 0 11-2 0v-2zm8-5a1 1 0 00-1-1h-2a1 1 0 100 2h2a1 1 0 001-1zM5 8a1 1 0 100 2h2a1 1 0 100-2H5z" clipRule="evenodd"></path>
             </svg>
             <h1 className="text-xl font-semibold">{userCoins} Coins</h1>
+          </div>
           </div>
         </div>
         

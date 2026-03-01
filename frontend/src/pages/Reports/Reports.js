@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
+import { FiArrowLeft } from "react-icons/fi";
 import Navbar from "../../components/Navbar/Navbar";
 
 const Reports = () => {
@@ -56,8 +57,15 @@ const Reports = () => {
     <div className="flex flex-row w-full">
       <Navbar />
       <div className="w-full">
-        <div className="flex flex-row items-center p-6 bg-teal-100 h-fit shadow-lg">
-          <h1 className="ml-4 text-3xl font-semibold text-teal-800">
+        <div className="p-6 bg-teal-100 shadow-lg">
+          <button
+            onClick={() => (window.history.length > 1 ? navigate(-1) : navigate("/assessments"))}
+            className="flex items-center gap-2 text-teal-700 hover:text-teal-900 mb-3 transition-colors"
+          >
+            <FiArrowLeft size={18} />
+            <span className="text-sm font-medium">Back</span>
+          </button>
+          <h1 className="ml-1 text-3xl font-semibold text-teal-800">
             Your Health Report
           </h1>
         </div>

@@ -19,6 +19,10 @@ import GoalTrackerPage from "./pages/GoalTracker/GoalTrackerPage";
 import Journal from "./pages/Journal/Journal";
 import Breathing from "./pages/Breathing/Breathing";
 import SoulReport from "./pages/SoulReport/SoulReport";
+import Insights from "./pages/Insights/Insights";
+import Assessments from "./pages/Assessments/Assessments";
+import Activities from "./pages/Activities/Activities";
+import Progress from "./pages/Progress/Progress";
 
 // Auth check component - returns outlet or redirect based on auth state
 const RequireAuth = () => {
@@ -112,6 +116,22 @@ const router = createBrowserRouter([
       {
         path: "/soul-report",
         element: <SoulReport />,
+      },
+      {
+        path: "/insights",
+        element: <Insights />,
+      },
+      {
+        path: "/assessments",
+        element: <Assessments />,
+      },
+      {
+        path: "/activities",
+        element: <Activities />,
+      },
+      {
+        path: "/progress",
+        element: <Progress />,
       },
 
     ]

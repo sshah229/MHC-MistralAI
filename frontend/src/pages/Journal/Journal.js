@@ -1,5 +1,7 @@
 // src/pages/JournalOverview.jsx
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { FiArrowLeft } from "react-icons/fi";
 import axios from "axios";
 import Navbar from "../../components/Navbar/Navbar";
 
@@ -12,6 +14,7 @@ const emotionEmoji = {
 };
 
 const JournalOverview = () => {
+  const navigate = useNavigate();
   const [dates, setDates] = useState([]);
   const [selectedDate, setSelectedDate] = useState(null);
   const [entries, setEntries] = useState([]);
@@ -41,6 +44,13 @@ const JournalOverview = () => {
       <div className="flex flex-row w-full">
         <Navbar />
         <div className="w-full p-6">
+          <button
+            onClick={() => (window.history.length > 1 ? navigate(-1) : navigate("/progress"))}
+            className="flex items-center gap-2 text-slate-500 hover:text-slate-800 mb-4 transition-colors"
+          >
+            <FiArrowLeft size={18} />
+            <span className="text-sm font-medium">Back</span>
+          </button>
           <h1 className="text-3xl font-semibold text-teal-800 mb-6">
             Activity by Date
           </h1>

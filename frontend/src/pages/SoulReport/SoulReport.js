@@ -1,4 +1,6 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { FiArrowLeft } from "react-icons/fi";
 import axios from "axios";
 import Navbar from "../../components/Navbar/Navbar";
 import {
@@ -21,6 +23,7 @@ const emotionColors = {
 };
 
 const SoulReport = () => {
+  const navigate = useNavigate();
   const [report, setReport] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -94,6 +97,13 @@ const SoulReport = () => {
       </div>
       <div className="flex-1 p-8 bg-gradient-to-br from-purple-50 to-indigo-50 overflow-y-auto">
         <div className="max-w-4xl mx-auto space-y-6">
+          <button
+            onClick={() => (window.history.length > 1 ? navigate(-1) : navigate("/insights"))}
+            className="flex items-center gap-2 text-slate-500 hover:text-slate-800 transition-colors no-print"
+          >
+            <FiArrowLeft size={18} />
+            <span className="text-sm font-medium">Back</span>
+          </button>
           <div className="text-center mb-8">
             <h1 className="text-3xl font-bold text-purple-800">Weekly Soul Report</h1>
             <p className="text-gray-500 mt-1">Your emotional journey over the past 7 days</p>
